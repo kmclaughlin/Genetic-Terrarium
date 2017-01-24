@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "ResourceMap.h"
 
-
+//xorShift fast random number generator function
 uint32_t xor128(uint32_t state[4]) {
 	uint32_t t;
 	t = state[0] ^ (state[0] << 11);

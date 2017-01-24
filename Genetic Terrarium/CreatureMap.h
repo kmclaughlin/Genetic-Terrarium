@@ -16,8 +16,5 @@ public:
 private:
 	Creature** map;
 	int width, height;
-	//don't need a buffer, allow for constant change, not single state change.
-	//may need a buffer for parrallelisation
-	//Creature** bufferMap;
 };
 #endif

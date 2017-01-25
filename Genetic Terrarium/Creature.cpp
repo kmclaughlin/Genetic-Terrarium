@@ -9,10 +9,7 @@ using namespace std;
 /*
 TODO
 update flesh out and finish
-move - needs creature map interaction to update creature position and check if movement position is allowed - need to check both current creature map and the updated one
-foodcompare - get food check working and interaction with resourceMap
 craeture creation and destruction - need full initiation of variables that are dependant on other variables
-check getnext tree node
 is "isoutcomeACtion" neccessary??
 creature species signature calculate
 
@@ -54,7 +51,7 @@ Creature::Creature(int* tree, int treeLength, bool carnivore, float maxMass, flo
 
 Creature::Creature(Creature* creature, int x, int y){
 	//create random decision tree between 20 and 60 total nodes
-	randomTree(20 + rand() % 40);
+	randomTree(10 + rand() % 20);
 	carnivore = creature->isCarnivore();
 	//get the variables of the provided creature and vary them by +-5%
 	maxMass = creature->getMaxMass() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getMaxMass();
@@ -90,7 +87,7 @@ Creature::Creature(Creature* creature, int x, int y){
 Creature::Creature(bool carnivore) :carnivore(carnivore) {
 	//create random decision tree between 20 and 60 total nodes
 	randomTree(20 + rand() % 40);
-	maxMass = 35;// 10 + RANDOM_NORMALISED_FLOAT * (MAX_MAX_MASS - 10);
+	maxMass = 15;// 10 + RANDOM_NORMALISED_FLOAT * (MAX_MAX_MASS - 10);
 	mass = 0.9f * maxMass;
 	energyThreshold = maxMass * MAX_ENERGY_CONST * RANDOM_NORMALISED_FLOAT;
 	growthRate = RANDOM_NORMALISED_FLOAT * MAX_GROWTH_RATE;
@@ -130,75 +127,78 @@ Creature::~Creature(){
 }
 
 bool Creature::update(){
+	decisionsBeforeAction = -1;
+	bool returnValue;
 	if (!alive) {
 		//remove the creature from the craeture map
 		creatureMap->removeCreature(mapX, mapY);
-		return false;
+		returnValue = false;
 	}
-	//reduce energy every tick regardless of action, it takes energy to live
-	energy -= movementCost;
-	pregnancyCheck();//
+	else {
+		//reduce energy every tick regardless of action, it takes energy to live
+		energy -= movementCost;
+		pregnancyCheck();
 
-	//update creature variables
-	updateCreatureVariables();
-	//if pregnant and brought to term babies are born without action so long as there is a free adjacent space for them to be born into
-	//consult decision tree, work through each step of the decision tree until an action is made
-	actionTaken = false;
-	//record current time, once time passed exceeds allotted time for 1 cycle return with no action and pick up in same place next tick
-	clock_t startTime = clock();
-	//TODO - to the time limit here properly with microseconds
-	while (!actionTaken ){//&& clock() - startTime < MAX_TIME){
-		switch(decisionTree[currentTreeNodeStart]){
-			//decisions are 100s, actions < 100
-		case 1:
-			//take no action;
-			//function to reset the decision tree
-			takeAction();
-			break;
-		case 2:
-			//move up
-			if (creatureMap->moveCreature(mapX, mapY, 'u')){
-				mapY++;
-				energy -= movementCost;
-			}
-			//if the current creature is a carnivore, the target square has a creature in it and that creature isnt a carnivore
-			//else if (carnivore && creatureMap->getCell(mapX, mapY) != NULL && !creatureMap->getCell(mapX, mapY)->isCarnivore()) {
+		//update creature variables
+		updateCreatureVariables();
+		//if pregnant and brought to term babies are born without action?? could just set action taken so long as there is a free adjacent space for them to be born into
+		//consult decision tree, work through each step of the decision tree until an action is made
+		actionTaken = false;
+		//record current time, once time passed exceeds allotted time for 1 cycle return with no action and pick up in same place next tick
+		clock_t startTime = clock();
+		//TODO - to the time limit here properly with microseconds
+		while (!actionTaken) {//&& clock() - startTime < MAX_TIME){
+			switch (decisionTree[currentTreeNodeStart]) {
+				//decisions are 100s, actions < 100
+			case 1:
+				//take no action;
+				//function to reset the decision tree
+				takeAction();
+				break;
+			case 2:
+				//move up
+				if (creatureMap->moveCreature(mapX, mapY, 'u')) {
+					mapY++;
+					energy -= movementCost;
+				}
+				//if the current creature is a carnivore, the target square has a creature in it and that creature isnt a carnivore
+				//else if (carnivore && creatureMap->getCell(mapX, mapY) != NULL && !creatureMap->getCell(mapX, mapY)->isCarnivore()) {
 
-			//}
-			takeAction();
-			break;
-		case 3:
-			//move down
-			if (creatureMap->moveCreature(mapX, mapY, 'd')){
-				mapY--;
-				energy -= movementCost;
-			}
-			takeAction();
-			break;
-		case 4:
-			//move left
-			if (creatureMap->moveCreature(mapX, mapY, 'l')){
-				mapX--;
-				energy -= movementCost;
-			}
-			takeAction();
-			break;
-		case 5:
-			//move right
-			if (creatureMap->moveCreature(mapX, mapY, 'r')){
-				mapX++;
-				energy -= movementCost;
-			}
-			takeAction();
-			break;
-		case 6:
-			if (!pregnant && mature) {
-				inHeat = true;
-			}
-			takeAction();
-			break;
-			//become in heat
-			/*case 6:
+				//}
+				takeAction();
+				break;
+			case 3:
+				//move down
+				if (creatureMap->moveCreature(mapX, mapY, 'd')) {
+					mapY--;
+					energy -= movementCost;
+				}
+				takeAction();
+				break;
+			case 4:
+				//move left
+				if (creatureMap->moveCreature(mapX, mapY, 'l')) {
+					mapX--;
+					energy -= movementCost;
+				}
+				takeAction();
+				break;
+			case 5:
+				//move right
+				if (creatureMap->moveCreature(mapX, mapY, 'r')) {
+					mapX++;
+					energy -= movementCost;
+				}
+				takeAction();
+				break;
+			case 6:
+				if (!pregnant && mature) {
+					inHeat = true;
+				}
+				takeAction();
+				break;
+				//become in heat
+				/*case 6:
 				//move up and left
 				move('q');
 				takeAction();
@@ -229,92 +229,95 @@ bool Creature::update(){
 				takeAction();
 				break;
 				*/
-		case 100:
-			//is there most food in the up direction
-			nextTreeNode(foodCompare('u', 1));
-			break;
-		case 200:
-			//is there most food in the down direction
-			nextTreeNode(foodCompare('d', 1));
-			break;
-		case 300:
-			//is there most food in the left direction
-			nextTreeNode(foodCompare('l', 1));
-			break;
-		case 400:
-			//is there most food in the right direction
-			nextTreeNode(foodCompare('r', 1));
-			break;
-		case 500:
-			nextTreeNode(foodCompare('u', 2));
-			break;
-		case 600:
-			nextTreeNode(foodCompare('d', 2));
-			break;
-		case 700:
-			nextTreeNode(foodCompare('l', 2));
-			break;
-		case 800:
-			nextTreeNode(foodCompare('r', 2));
-			break;
-		case 900:
-			nextTreeNode(animalCompare('u', 1));
-			break;
-		case 1000:
-			nextTreeNode(animalCompare('d', 1));
-			break;
-		case 1100:
-			nextTreeNode(animalCompare('l', 1));
-			break;
-		case 1200:
-			nextTreeNode(animalCompare('r', 1));
-			break;
-		case 1300:
-			nextTreeNode(animalCompare('u', 2));
-			break;
-		case 1400:
-			nextTreeNode(animalCompare('d', 2));
-			break;
-		case 1500:
-			nextTreeNode(animalCompare('l', 2));
-			break;
-		case 1600:
-			nextTreeNode(animalCompare('r', 2));
-			break;
-		case 1700:
-			nextTreeNode(energy > energyThreshold);
-			break;
-		case 1800:
-			nextTreeNode(inHeat);
-			break;
-		case 1900:
-			nextTreeNode(pregnant);
-			break;
-		case 2000:
-			nextTreeNode(mature);
-			break;
-			/*
-			is in heat
-			if pregnant
-			if more food, predators, sameSpecies up, right left down
-			if energy > energy threshold
-			if mature
-			if cell is free up down left right
-			if 
-			*/
-		default:
-			//should never get here, log an error
-			//cout << "Error - hit default action - should never happen. " << decisionTree[currentTreeNodeStart] << endl;
-			takeAction();
+			case 100:
+				//is there most food in the up direction
+				nextTreeNode(foodCompare('u', 1));
+				break;
+			case 200:
+				//is there most food in the down direction
+				nextTreeNode(foodCompare('d', 1));
+				break;
+			case 300:
+				//is there most food in the left direction
+				nextTreeNode(foodCompare('l', 1));
+				break;
+			case 400:
+				//is there most food in the right direction
+				nextTreeNode(foodCompare('r', 1));
+				break;
+			case 500:
+				nextTreeNode(foodCompare('u', 2));
+				break;
+			case 600:
+				nextTreeNode(foodCompare('d', 2));
+				break;
+			case 700:
+				nextTreeNode(foodCompare('l', 2));
+				break;
+			case 800:
+				nextTreeNode(foodCompare('r', 2));
+				break;
+			case 900:
+				nextTreeNode(animalCompare('u', 1));
+				break;
+			case 1000:
+				nextTreeNode(animalCompare('d', 1));
+				break;
+			case 1100:
+				nextTreeNode(animalCompare('l', 1));
+				break;
+			case 1200:
+				nextTreeNode(animalCompare('r', 1));
+				break;
+			case 1300:
+				nextTreeNode(animalCompare('u', 2));
+				break;
+			case 1400:
+				nextTreeNode(animalCompare('d', 2));
+				break;
+			case 1500:
+				nextTreeNode(animalCompare('l', 2));
+				break;
+			case 1600:
+				nextTreeNode(animalCompare('r', 2));
+				break;
+			case 1700:
+				nextTreeNode(energy > energyThreshold);
+				break;
+			case 1800:
+				nextTreeNode(inHeat);
+				break;
+			case 1900:
+				nextTreeNode(pregnant);
+				break;
+			case 2000:
+				nextTreeNode(mature);
+				break;
+				/*
+				is in heat
+				if pregnant
+				if more food, predators, sameSpecies up, right left down
+				if energy > energy threshold
+				if mature
+				if cell is free up down left right
+				if
+				*/
+			default:
+				//should never get here, log an error
+				//cout << "Error - hit default action - should never happen. " << decisionTree[currentTreeNodeStart] << endl;
+				takeAction();
+			}
+			decisionsBeforeAction++;
 		}
+		//TODO - check if creature has < 0 energy and therefore dead, if so clean up and delete leave corpse with energy based on mass and energy at death if killed by predators
+		// if dead return false
+		if (energy < 0) {
+			alive = false;
+		}
+		//check at the start of the next update if the craeture is dead or not
+		returnValue = true;
 	}
-	//TODO - check if creature has < 0 energy and therefore dead, if so clean up and delete leave corpse with energy based on mass and energy at death if killed by predators
-	// if dead return false
-	if (energy < 0) {
-		alive = false;
-	}
-	//check at the start of the next update if the craeture is dead or not
-	return true;
+	return returnValue;
 }
 
 void Creature::nextTreeNode(bool lastDecision){
@@ -350,6 +353,12 @@ void Creature::nextTreeNode(bool lastDecision){
 		currentTreeNodeStart = falseSubTreeStart;
 		//current tree node end stays the same;
 	}
+	/*cout << "start: " << currentTreeNodeStart << "  End: " << currentTreeNodeEnd << endl;
+	for (int i = currentTreeNodeStart; i <= currentTreeNodeEnd; i++) {
+		cout << decisionTree[i] << " ";
+	}
+	cout << endl;*/
+
 }
 
 //check if the outcome of the current decision is an action or another node
@@ -597,14 +606,20 @@ bool Creature::animalCompare(char dir, int rank) {
 }
 
 void Creature::randomTree(int length){
-	// there are only 4 rules for a valid tree from a decision tree array
+	// there are only 5 rules for a valid tree from a decision tree array
 	// 1. the first element must be a decision
 	// 2. the last 2 elements must be actions
 	// 3. the total number of actions in the tree = the total number of decisions + 1
 	// 4. at any point before the end the sum of actions cannot exceed the sum of decisions to that point
+	// 5. the length of the array must be odd
 
 	//randomly set the length of the new decision tree
-	decisionTreeLength = length;
+	if (length % 2 == 0) {
+		decisionTreeLength = length + 1;
+	}
+	else {
+		decisionTreeLength = length;
+	}
 	decisionTree = new int[decisionTreeLength];
 
 	//set the first element to a random decision to obey rule 1
@@ -739,16 +754,94 @@ void Creature::beBorn(int x, int y) {
 	mapY = y;
 }
 
-void Creature::generateOffspringDecisionTree(int* babyDecisionTree, int* babyTreeLength, int* mateDecisionTree, int* mateTreeLength) {
+void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTreeLength, int* mateDecisionTree, int* mateTreeLength) {
 
-	//copy decision tree array
-	for (int i = 0; i < decisionTreeLength; i++) {
-		babyDecisionTree[i] = decisionTree[i];
-	}
 	//then have it mutate with a small chance
-	if (RANDOM_NORMALISED_FLOAT < MUTATION_RATE) {
+	//very small chance to copy a node of decision tree and its sub tree and replace any random node and its sub tree with the copied one
+	
+	if (RANDOM_NORMALISED_FLOAT < MUTATION_RATE * MUTATION_RATE * MUTATION_RATE) {
+		//find the start and end of a random node to copy
+		int nodeToCopyStart = rand() % decisionTreeLength;
+		int nodeToCopyEnd = nodeToCopyStart;
+
+		int decisions = 1;
+		int actions = 0;
+		do {
+			if (nodeToCopyEnd >= decisionTreeLength) {
+				cout << "tree length: " << decisionTreeLength << " nodeCopyEnd: " << nodeToCopyEnd << endl;
+				cout << "Error - tree node search exceeded bounds of tree" << endl;
+			}
+			else if (decisionTree[nodeToCopyEnd] % 100 == 0) {
+				decisions++;
+			}
+			else {
+				actions++;
+			}
+			nodeToCopyEnd++;
+		} while (decisions > actions);
+
+		//find the start and end of a random node to replace
+		int nodeToReplaceStart = rand() % decisionTreeLength;
+		int nodeToReplaceEnd = nodeToReplaceStart;
+		
+		decisions = 1;
+		actions = 0;
+		do {
+			if (nodeToReplaceEnd >= decisionTreeLength) {
+				cout << "tree length: " << decisionTreeLength << " nodeReplaceEnd: " << nodeToReplaceEnd << endl;
+				cout << "Error - tree node search exceeded bounds of tree" << endl;
+			}
+			else if (decisionTree[nodeToReplaceEnd] % 100 == 0) {
+				decisions++;
+			}
+			else {
+				actions++;
+			}
+			nodeToReplaceEnd++;
+		} while (decisions > actions);
+
+		//the length of the new decision tree is the length of the original minus the replaced node plus the copied node
+		babyTreeLength = decisionTreeLength - (nodeToReplaceEnd - nodeToReplaceStart) + (nodeToCopyEnd - nodeToCopyStart);
+
+		babyDecisionTree = new int[babyTreeLength];
+
+		//copy the decision tree to the baby tree up to the point you wish to replace
+		for (int i = 0; i < nodeToReplaceStart; i++) {
+			babyDecisionTree[i] = decisionTree[i];
+		}
+		//then copy the node to be copied into the space for the one to be replaced (don't have to be the same length)
+		for (int i = 0; i < nodeToCopyEnd - nodeToCopyStart; i++) {
+			babyDecisionTree[nodeToReplaceStart + i] = decisionTree[nodeToCopyStart + i];
+		}
+		//copy the rest of the decision tree to the baby tree from the end of the replaced node onwards
+		for (int i = 0; i < babyTreeLength - (nodeToReplaceStart + nodeToCopyEnd - nodeToCopyStart); i++) {
+			babyDecisionTree[nodeToReplaceStart + nodeToCopyEnd - nodeToCopyStart + i] = decisionTree[nodeToReplaceEnd + i];
+		}
+
+		/*
+		for (int i = 0; i < decisionTreeLength; i++) {
+			cout << decisionTree[i] << " ";
+		}
+		cout << endl;
+		cout << "replace: " << nodeToReplaceStart << " " << nodeToReplaceEnd << "  copy: " << nodeToCopyStart << " " << nodeToCopyEnd << endl;
+		for (int i = 0; i < babyTreeLength; i++) {
+			cout << babyDecisionTree[i] << " ";
+		}
+		cout << endl;*/
+
+	}
+	//chance of some random action or decision being randomised to some other action or decision (doesn't change action to decision or vice versa)
+	else if (RANDOM_NORMALISED_FLOAT < MUTATION_RATE) {
+		babyTreeLength = decisionTreeLength;
+		babyDecisionTree = new int[babyTreeLength];
+
+		//copy decision tree array
+		for (int i = 0; i < decisionTreeLength; i++) {
+			babyDecisionTree[i] = decisionTree[i];
+		}
+
 		if (mateDecisionTree == NULL) {
-			int randomNode = rand() % *babyTreeLength;
+			int randomNode = rand() % babyTreeLength;
 			//check if the node to change is an decision, if so set to random decision, otherwise set to random action
 			if (0 == babyDecisionTree[randomNode] % 100) {
 				babyDecisionTree[randomNode] = (1 + rand() % NUM_OF_DECISIONS) * 100;
@@ -756,6 +849,16 @@ void Creature::generateOffspringDecisionTree(int* babyDecisionTree, int* babyTre
 			else {
 				babyDecisionTree[randomNode] = 1 + rand() % NUM_OF_ACTIONS;
 			}
+		}
+	}
+	//if no mutation just copy the tree
+	else {
+		babyTreeLength = decisionTreeLength;
+		babyDecisionTree = new int[babyTreeLength];
+
+		//copy decision tree array
+		for (int i = 0; i < decisionTreeLength; i++) {
+			babyDecisionTree[i] = decisionTree[i];
 		}
 	}
 }
@@ -767,10 +870,13 @@ void Creature::replicate() {
 	babies get mass each tick from their parent - does parent toal movement mass then increase??
 	randomise 
 	*/
-	int babyTreeLength = decisionTreeLength;
-	int* babyTree = new int[babyTreeLength];
+	//int babyTreeLength = decisionTreeLength;
+	//int* babyTree = new int[babyTreeLength];
 
-	generateOffspringDecisionTree(babyTree, &babyTreeLength, NULL, NULL);
+	int babyTreeLength = 0;
+	int* babyTree = new int;
+
+	generateOffspringDecisionTree(babyTree, babyTreeLength, NULL, NULL);
 
 	float babyMaxMass = maxMass + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * maxMass;
 	float babyMass = mass * 0.35f;

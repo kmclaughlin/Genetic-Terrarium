@@ -31,12 +31,15 @@ public:
 	int getNumOffspringMedian() { return numOffspringMedian; };
 	int getLengthOfPregnancy() { return lengthOfPregnancy; };
 	int* getCreatureID() { return creatureID; };
+	int getDecisionTreeLength() { return decisionTreeLength; };
+	int getDecisionsBeforeAction() { return decisionsBeforeAction; };
 
 	static ResourceMap* resourceMap;
 	static CreatureMap* creatureMap;
 	static CreatureList* creatureList;
 
 protected:
+	int decisionsBeforeAction;
 	//the maximum time that the creature can spend deciding what to do this tick, when max time is reached the creature does nothing but next tick continues where
 	//it left off in the decision process
 	const int MAX_TIME = 1; //time in milliseconds
@@ -52,7 +55,7 @@ protected:
 	const int MAX_NUM_OFFSPRING_MEDIAN = 1;
 	const int MAX_LENGTH_OF_PREGNANCY = 10;
 	//TODO - make this a creature specific variable?
-	const float MUTATION_RATE = 0.8f;
+	const float MUTATION_RATE = 0.15f;
 	//variables used to help define the creatures behaviour
 	//need to lose energy every turn based on mass regardless of action, then lose mass based on action ie movement.
 	//need a no action action.
@@ -126,7 +129,7 @@ protected:
 	void checkVariablesWithinBounds();
 	void setCreatureID();
 
-	void generateOffspringDecisionTree(int* babyDecisionTree, int* babyTreeLength, int* mateDecisionTree, int* mateTreeLength);
+	void generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTreeLength, int* mateDecisionTree, int* mateTreeLength);
 	void pregnancyCheck();
 	void beBorn(int x, int y);
 	void replicate();

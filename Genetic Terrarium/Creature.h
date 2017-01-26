@@ -2,6 +2,7 @@
 #define CREATURE_H
 #include "CreatureMap.h"
 #include "ResourceMap.h"
+#include "Xorshift.h"
 
 class CreatureList;
 
@@ -10,9 +11,6 @@ class CreatureList;
 class Creature{
 public:
 	//constructor destructor
-	//Creature(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energyThreshold, float growthRate,
-	//	int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy, int mapX, int mapY);
-	//Creature(Creature* creature, int x, int y);
 	Creature(bool carnivore);
 	~Creature();
 
@@ -51,9 +49,9 @@ protected:
 	//it left off in the decision process
 	const int MAX_TIME = 1; //time in milliseconds
 	const float MAX_DEFENSE = 1.0;
-	const float START_ENERGY_PERCENTAGE = 0.75; //maybe 
+	const float START_ENERGY_PERCENTAGE = 0.75 / 2; //maybe 
 	const float MOVEMENT_COST_CONST = 0.005f;
-	const float MAX_ENERGY_CONST = 0.75;
+	const float MAX_ENERGY_CONST = 2 * 0.75;
 	const float ENERGY_TO_MASS_CONST = 0.5;
 	//These may be needed to set random values
 	const float MAX_MAX_MASS = 60.0f;

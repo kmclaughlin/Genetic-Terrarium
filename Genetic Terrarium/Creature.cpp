@@ -2,7 +2,7 @@
 #include "Creature.h"
 #include "CreatureList.h"
 
-#define RANDOM_NORMALISED_FLOAT static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
+#define RANDOM_NORMALISED_FLOAT static_cast <float> (xor128()) / static_cast <float> (UINT_MAX)
 
 using namespace std;
 
@@ -16,7 +16,7 @@ creature species signature calculate
 */
 //id's of actions (terminators) and decisions (nodes) for update switch and filling decision tree arrays
 //actions id's are < 100 and decision ids are *100 so they are identifiable in array list
-//as decisions and actions are sequential only actually need to know how many there are, can get random decision by (1 + rand() % NUM_OF_DECISIONS) * 100
+//as decisions and actions are sequential only actually need to know how many there are, can get random decision by (1 + xor128() % NUM_OF_DECISIONS) * 100
 const  int Creature::NUM_OF_DECISIONS = 17;
 const  int Creature::NUM_OF_ACTIONS = 6;
 
@@ -24,67 +24,6 @@ ResourceMap* Creature::resourceMap = NULL;
 CreatureMap* Creature::creatureMap = NULL;
 CreatureList* Creature::creatureList = NULL;
 
-//initialise the creature from its parents
-/*
-Creature::Creature(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energyThreshold, float growthRate,
-				int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy, int mapX, int mapY)
-				:decisionTree(tree), decisionTreeLength(treeLength), carnivore(carnivore), maxMass(maxMass), mass(mass), 
-				energyThreshold(energyThreshold), growthRate(growthRate), numOffspringRange(numOffspringRange), numOffspringMedian(numOffspringMedian),
-				lengthOfPregnancy(lengthOfPregnancy), mapX(mapX), mapY(mapY){
-
-	pregnant = false;
-	inHeat = false;
-	alive = true;
-
-	checkVariablesWithinBounds();
-	setCreatureID();
-	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
-	age = -1;
-	//update creature variables
-	updateCreatureVariables();
-	//creatures start with a fixed percentage of their max energy
-	energy = maxEnergy * START_ENERGY_PERCENTAGE;
-
-	//curentTreeNode holds the current decision sub node, which at this point is the whole tree, needs to be cpoied
-	currentTreeNodeStart = 0;
-	currentTreeNodeEnd = decisionTreeLength - 1;
-}
-
-Creature::Creature(Creature* creature, int x, int y){
-	//create random decision tree between 20 and 60 total nodes
-	randomTree(10 + rand() % 20);
-	carnivore = creature->isCarnivore();
-	//get the variables of the provided creature and vary them by +-5%
-	maxMass = creature->getMaxMass() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getMaxMass();
-	energyThreshold = creature->getEnergyThreshold() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getEnergyThreshold();
-	growthRate = creature->getGrowthRate() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getGrowthRate();
-	numOffspringRange = creature->getNumOffspringRange() + (rand() % 3) - 1;
-	numOffspringMedian = creature->getNumOffspringMedian() + (rand() % 3) - 1;
-	lengthOfPregnancy = creature->getLengthOfPregnancy() + (rand() % 5) - 2;
-	mapX = x;
-	mapY = y;
-	
-	checkVariablesWithinBounds();
-	setCreatureID();
-	mass = 0.9f * maxMass;
-
-	pregnant = false;
-	inHeat = false;
-	alive = true;
-			
-	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
-	age = -1;
-	//update creature variables
-	updateCreatureVariables();
-
-	//creatures start with a fixed percentage of their max energy
-	energy = maxEnergy * START_ENERGY_PERCENTAGE;
-
-	//curentTreeNode holds the current decision sub node, which at this point is the whole tree, needs to be cpoied
-	currentTreeNodeStart = 0;
-	currentTreeNodeEnd = decisionTreeLength - 1;
-}
-*/
 Creature::Creature(bool carnivore) :carnivore(carnivore) {
 	active = false;
 	actionTaken = false;
@@ -96,9 +35,9 @@ Creature::Creature(bool carnivore) :carnivore(carnivore) {
 	mass = 0.9f * maxMass;
 	energyThreshold = maxMass * MAX_ENERGY_CONST * RANDOM_NORMALISED_FLOAT;
 	growthRate = RANDOM_NORMALISED_FLOAT * MAX_GROWTH_RATE;
-	numOffspringRange = rand() % MAX_NUM_OFFSPRING_RANGE;
-	numOffspringMedian = rand() % MAX_NUM_OFFSPRING_MEDIAN;
-	lengthOfPregnancy = rand() % MAX_LENGTH_OF_PREGNANCY;
+	numOffspringRange = xor128() % MAX_NUM_OFFSPRING_RANGE;
+	numOffspringMedian = xor128() % MAX_NUM_OFFSPRING_MEDIAN;
+	lengthOfPregnancy = xor128() % MAX_LENGTH_OF_PREGNANCY;
 	mapX = NULL;
 	mapY = NULL;
 
@@ -181,15 +120,15 @@ void Creature::setCreatureAttributes(Creature* creature) {
 	lookedAround = false;
 
 	//create random decision tree between 20 and 60 total nodes
-	randomTree(20 + rand() % 40);
+	randomTree(20 + xor128() % 40);
 	carnivore = creature->isCarnivore();
 	//get the variables of the provided creature and vary them by +-5%
 	maxMass = creature->getMaxMass() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getMaxMass();
 	energyThreshold = creature->getEnergyThreshold() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getEnergyThreshold();
 	growthRate = creature->getGrowthRate() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getGrowthRate();
-	numOffspringRange = creature->getNumOffspringRange() + (rand() % 3) - 1;
-	numOffspringMedian = creature->getNumOffspringMedian() + (rand() % 3) - 1;
-	lengthOfPregnancy = creature->getLengthOfPregnancy() + (rand() % 5) - 2;
+	numOffspringRange = creature->getNumOffspringRange() + (xor128() % 3) - 1;
+	numOffspringMedian = creature->getNumOffspringMedian() + (xor128() % 3) - 1;
+	lengthOfPregnancy = creature->getLengthOfPregnancy() + (xor128() % 5) - 2;
 	mapX = NULL;
 	mapY = NULL;
 
@@ -399,8 +338,7 @@ bool Creature::update(){
 				*/
 			default:
 				//should never get here, log an error
-				//cout << "Error - hit default action - should never happen. " << decisionTree[currentTreeNodeStart] << endl;
-				takeAction();
+				cout << "Error - hit default action - should never happen. " << decisionTree[currentTreeNodeStart] << endl;
 			}
 			decisionsBeforeAction++;
 		}
@@ -448,11 +386,6 @@ void Creature::nextTreeNode(bool lastDecision){
 		currentTreeNodeStart = falseSubTreeStart;
 		//current tree node end stays the same;
 	}
-	/*cout << "start: " << currentTreeNodeStart << "  End: " << currentTreeNodeEnd << endl;
-	for (int i = currentTreeNodeStart; i <= currentTreeNodeEnd; i++) {
-		cout << decisionTree[i] << " ";
-	}
-	cout << endl;*/
 
 }
 
@@ -497,8 +430,9 @@ void Creature::updateCreatureVariables(){
 	//TODO - fix these mass dependant variables
 	//************
 	if (mass < maxMass){
-		mass += growthRate * (maxMass - mass);
-		energy -= growthRate * (maxMass - mass) * ENERGY_TO_MASS_CONST;
+		float massGained = growthRate * (maxMass - mass);
+		mass += massGained;
+		energy -= massGained * ENERGY_TO_MASS_CONST;
 	}
 	
 	movementCost = mass * MOVEMENT_COST_CONST; //increse exponentially with mass
@@ -718,10 +652,10 @@ void Creature::randomTree(int length){
 	decisionTree = new int[decisionTreeLength];
 
 	//set the first element to a random decision to obey rule 1
-	decisionTree[0] = (1 + rand() % NUM_OF_DECISIONS) * 100;
+	decisionTree[0] = (1 + xor128() % NUM_OF_DECISIONS) * 100;
 	//set the last 2 elements to random actions to obey rule 2
-	decisionTree[decisionTreeLength - 1] = 1 + rand() % NUM_OF_ACTIONS;
-	decisionTree[decisionTreeLength - 2] = 1 + rand() % NUM_OF_ACTIONS;
+	decisionTree[decisionTreeLength - 1] = 1 + xor128() % NUM_OF_ACTIONS;
+	decisionTree[decisionTreeLength - 2] = 1 + xor128() % NUM_OF_ACTIONS;
 
 	//randomly fill the rest of the decision tree, making sure the final tree obeys rule 3
 	int actions = 0;
@@ -730,22 +664,22 @@ void Creature::randomTree(int length){
 		//if the difference in number of decisions and actions already in the tree is less than the number of spaces left to fill and the number 
 		// of actions is less than the number of decisions (to obey rule 4) then keep filling at random  
 		if (decisions - actions < decisionTreeLength - 2 - i && actions < decisions){
-			if (rand() % 2 == 0){
-				decisionTree[i] = 1 + rand() % NUM_OF_ACTIONS;
+			if (xor128() % 2 == 0){
+				decisionTree[i] = 1 + xor128() % NUM_OF_ACTIONS;
 				actions++;
 			}
 			else {
-				decisionTree[i] = (1 + rand() % NUM_OF_DECISIONS) * 100;
+				decisionTree[i] = (1 + xor128() % NUM_OF_DECISIONS) * 100;
 				decisions++;
 			}
 		}
 		//once the difference in decisions and actions is equal to the number of positions in the tree to fill they all must be actions
 		else if (decisions - actions >= decisionTreeLength - 2 - i){
-			decisionTree[i] = 1 + rand() % NUM_OF_ACTIONS;
+			decisionTree[i] = 1 + xor128() % NUM_OF_ACTIONS;
 			actions++;
 		}
 		else {
-			decisionTree[i] = (1 + rand() % NUM_OF_DECISIONS) * 100;
+			decisionTree[i] = (1 + xor128() % NUM_OF_DECISIONS) * 100;
 			decisions++;
 		}
 	}
@@ -854,14 +788,13 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 	
 	if (RANDOM_NORMALISED_FLOAT < MUTATION_RATE * MUTATION_RATE * MUTATION_RATE) {
 		//find the start and end of a random node to copy
-		int nodeToCopyStart = rand() % decisionTreeLength;
+		int nodeToCopyStart = xor128() % decisionTreeLength;
 		int nodeToCopyEnd = nodeToCopyStart;
 
 		int decisions = 1;
 		int actions = 0;
 		do {
 			if (nodeToCopyEnd >= decisionTreeLength) {
-				cout << "tree length: " << decisionTreeLength << " nodeCopyEnd: " << nodeToCopyEnd << endl;
 				cout << "Error - tree node search exceeded bounds of tree" << endl;
 			}
 			else if (decisionTree[nodeToCopyEnd] % 100 == 0) {
@@ -874,14 +807,13 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 		} while (decisions > actions);
 
 		//find the start and end of a random node to replace
-		int nodeToReplaceStart = rand() % decisionTreeLength;
+		int nodeToReplaceStart = xor128() % decisionTreeLength;
 		int nodeToReplaceEnd = nodeToReplaceStart;
 		
 		decisions = 1;
 		actions = 0;
 		do {
 			if (nodeToReplaceEnd >= decisionTreeLength) {
-				cout << "tree length: " << decisionTreeLength << " nodeReplaceEnd: " << nodeToReplaceEnd << endl;
 				cout << "Error - tree node search exceeded bounds of tree" << endl;
 			}
 			else if (decisionTree[nodeToReplaceEnd] % 100 == 0) {
@@ -910,18 +842,6 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 		for (int i = 0; i < babyTreeLength - (nodeToReplaceStart + nodeToCopyEnd - nodeToCopyStart); i++) {
 			babyDecisionTree[nodeToReplaceStart + nodeToCopyEnd - nodeToCopyStart + i] = decisionTree[nodeToReplaceEnd + i];
 		}
-
-		/*
-		for (int i = 0; i < decisionTreeLength; i++) {
-			cout << decisionTree[i] << " ";
-		}
-		cout << endl;
-		cout << "replace: " << nodeToReplaceStart << " " << nodeToReplaceEnd << "  copy: " << nodeToCopyStart << " " << nodeToCopyEnd << endl;
-		for (int i = 0; i < babyTreeLength; i++) {
-			cout << babyDecisionTree[i] << " ";
-		}
-		cout << endl;*/
-
 	}
 	//chance of some random action or decision being randomised to some other action or decision (doesn't change action to decision or vice versa)
 	else if (RANDOM_NORMALISED_FLOAT < MUTATION_RATE) {
@@ -934,13 +854,13 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 		}
 
 		if (mateDecisionTree == NULL) {
-			int randomNode = rand() % babyTreeLength;
+			int randomNode = xor128() % babyTreeLength;
 			//check if the node to change is an decision, if so set to random decision, otherwise set to random action
 			if (0 == babyDecisionTree[randomNode] % 100) {
-				babyDecisionTree[randomNode] = (1 + rand() % NUM_OF_DECISIONS) * 100;
+				babyDecisionTree[randomNode] = (1 + xor128() % NUM_OF_DECISIONS) * 100;
 			}
 			else {
-				babyDecisionTree[randomNode] = 1 + rand() % NUM_OF_ACTIONS;
+				babyDecisionTree[randomNode] = 1 + xor128() % NUM_OF_ACTIONS;
 			}
 		}
 	}
@@ -972,14 +892,15 @@ void Creature::replicate() {
 	generateOffspringDecisionTree(babyTree, babyTreeLength, NULL, NULL);
 
 	float babyMaxMass = maxMass + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * maxMass;
-	float babyMass = mass * 0.35f;
-	mass = mass * 0.80f;
-	energy = energy * 0.80f;
+	//TODO - doubled max energy constant (from 0.75) and changed the 3 values below. increased max plant energy from 1 to 1.5
+	float babyMass = mass * 0.30f;//0.35
+	mass = mass * 0.70f;//0.8
+	energy = energy * 0.70f;//0.8
 	float babyEnergyThreshold = energyThreshold + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * energyThreshold;
 	float babyGrowthRate = growthRate + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * growthRate;
-	int babyNumOffspringRange = numOffspringRange + (rand() % 3) - 1;
-	int babyNumOffspringMedian = numOffspringMedian + (rand() % 3) - 1;
-	int babyLengthOfPregnancy = lengthOfPregnancy + (rand() % 5) - 2;
+	int babyNumOffspringRange = numOffspringRange + (xor128() % 3) - 1;
+	int babyNumOffspringMedian = numOffspringMedian + (xor128() % 3) - 1;
+	int babyLengthOfPregnancy = lengthOfPregnancy + (xor128() % 5) - 2;
 
 	baby[0] = creatureList->getPoolCreature();
 	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, carnivore, babyMaxMass, babyMass, babyEnergyThreshold, babyGrowthRate,

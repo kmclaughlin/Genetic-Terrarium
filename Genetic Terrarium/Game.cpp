@@ -84,7 +84,7 @@ void Game::GameLoop(){
 				texture.update(pixels);
 				_mainWindow.draw(sprite);
 				_mainWindow.display();
-				cout << "screen: " << clock() - startTime1 << endl;
+				//cout << "screen: " << clock() - startTime1 << endl;
 				startTime1 = clock();
 				resourceMap->update();
 				startTime2 = clock();
@@ -93,17 +93,6 @@ void Game::GameLoop(){
 				if (currentEvent.type == sf::Event::Closed)
 				{
 					_gameState = Game::Exiting;
-				}
-				else if (currentEvent.KeyPressed) {
-					if (currentEvent.key.code == 'a') {
-						for (int i = 0; i < height; i++) {
-							for (int j = 0; j < width; j++) {
-								if (creatureMap->getCell(j, i) != NULL && !creatureMap->getCell(j, i)->isActive()) {
-									cout << creatureMap->getCell(j, i)  << " alive: " << creatureMap->getCell(j, i)->isAlive() << endl;
-								}
-							}
-						}
-					}
 				}
 				else if (currentEvent.KeyReleased){
 					_gameState = Game::Paused;
@@ -135,6 +124,7 @@ void Game::GameInit(){
 	
 	//seed the random number generator
 	srand(static_cast <unsigned> (time(0)));
+	initialiseXorState();
 	//srand(1234567890);
 	
 	resourceMap = new ResourceMap(width, height, 1.0f);
@@ -166,7 +156,7 @@ void Game::GameInit(){
 		for (int x = speciesSpawnX - 50; x < speciesSpawnX + 50; x++){
 			for (int y = speciesSpawnY - 50; y < speciesSpawnY + 50; y++){
 				//with a 1/14 chance put a creature in the cell if the cell is free
-				if (rand() % 30 < 1 && creatureMap->getCell(x, y) == NULL){
+				if (xor128() % 30 < 1 && creatureMap->getCell(x, y) == NULL){
 					//create a creature in the same species as the randomised one
 					Creature* creature = creatureList->getPoolCreature();
 					creature->setCreatureAttributes(speciesBase);

@@ -1,19 +1,7 @@
 #include "stdafx.h"
 #include "ResourceMap.h"
 
-//xorShift fast random number generator function
-uint32_t xor128(uint32_t state[4]) {
-	uint32_t t;
-	t = state[0] ^ (state[0] << 11);
-	state[0] = state[1]; state[1] = state[2]; state[2] = state[3];
-	return state[3] = state[3] ^ (state[3] >> 19) ^ (t ^ (t >> 8));
-}
-
-//static uint32_t xorsfSeed[] = { 123456789, 362436069, 521288629, 88675123 };
-static uint32_t xorsfSeed[] = { rand(), rand(), rand(), rand() };
-
-#define RANDOM_NORMALISED_FLOAT static_cast <float> (xor128(xorsfSeed)) / static_cast <float> (UINT_MAX)
-//#define RANDOM_NORMALISED_FLOAT static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
+#define RANDOM_NORMALISED_FLOAT static_cast <float> (xor128()) / static_cast <float> (UINT_MAX)
 
 ResourceMap::ResourceMap(int screenX, int screenY, float percentage){
 	width = screenX;
@@ -104,7 +92,6 @@ void ResourceMap::update(){
 						}
 					}
 					if (randomNumber < SEEDLING_SPAWN_CHANCE * plantDensity * plantDensity) {
-						//std::cout << randomNumber << " - " << seedlingSpawnChance << " - " << seedlingSpawnChance * plantDensity * plantDensity  << std::endl;
 						bufferMap[y * width + x] = SEEDLING_ENERGY;
 					}
 				}

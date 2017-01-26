@@ -2,6 +2,7 @@
 #define GAME_h
 #include "SFML/Window.hpp"
 #include "SFML/Graphics.hpp"
+#include "Xorshift.h"
 #include "Creature.h"
 #include "ResourceMap.h"
 #include "CreatureMap.h"

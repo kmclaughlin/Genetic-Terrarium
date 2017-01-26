@@ -1,5 +1,6 @@
 #ifndef RESOURCEMAP_H
 #define RESOURCEMAP_H
+#include "Xorshift.h"
 
 class ResourceMap{
 public:
@@ -22,7 +23,7 @@ private:
 	const float GROW_CHANCE = 0.05f;//0.1f;
 	const float SEEDLING_SPAWN_CHANCE = 0.0002f;
 	const float SEEDLING_SPAWN_THRESHOLD = SEEDLING_SPAWN_CHANCE * 25 * 25;
-	const float MAX_PLANT_ENERGY = 1.0f;
+	const float MAX_PLANT_ENERGY = 1.5f;
 	const float SEEDLING_ENERGY = 0.1f;
 };
 

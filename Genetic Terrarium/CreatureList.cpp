@@ -42,7 +42,6 @@ CreatureList::~CreatureList() {
 
 //root points to the first element in the list, to add a new element it becomes the new root and points to the old root
 void CreatureList::addCreature(Creature* creature) {
-	//cout << " added new node" << endl;
 	node* temp = root;
 	root = new node;
 	root->next = temp;
@@ -65,7 +64,6 @@ Creature* CreatureList::getPoolCreature() {
 	}
 	else {
 		if (activeNode->creature == NULL) {
-			cout << "uyagsfoiaugoaiug!!!!!!!!!!!!" << endl;
 			activeNode->creature = new Creature(false);
 		}
 		creatureToReturn = activeNode->creature;
@@ -127,7 +125,6 @@ void CreatureList::update(){
 		current = root;
 	}
 	while (current != NULL){
-		//cout << activeNode << " " << current->next << " " << root << endl;
 		//pooled creatures are dead, non pooled creatures are alive, but if they are not born yet they shouldn't be updated. They are not active
 		node* temp = current->next;
 		if (current->creature->isActive()) {

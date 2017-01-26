@@ -25,6 +25,7 @@ CreatureMap* Creature::creatureMap = NULL;
 CreatureList* Creature::creatureList = NULL;
 
 //initialise the creature from its parents
+/*
 Creature::Creature(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energyThreshold, float growthRate,
 				int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy, int mapX, int mapY)
 				:decisionTree(tree), decisionTreeLength(treeLength), carnivore(carnivore), maxMass(maxMass), mass(mass), 
@@ -83,10 +84,14 @@ Creature::Creature(Creature* creature, int x, int y){
 	currentTreeNodeStart = 0;
 	currentTreeNodeEnd = decisionTreeLength - 1;
 }
-
+*/
 Creature::Creature(bool carnivore) :carnivore(carnivore) {
+	active = false;
+	actionTaken = false;
+	lookedAround = false;
 	//create random decision tree between 20 and 60 total nodes
-	randomTree(20 + rand() % 40);
+	decisionTree = NULL;
+	decisionTreeLength = 0;
 	maxMass = 15;// 10 + RANDOM_NORMALISED_FLOAT * (MAX_MAX_MASS - 10);
 	mass = 0.9f * maxMass;
 	energyThreshold = maxMass * MAX_ENERGY_CONST * RANDOM_NORMALISED_FLOAT;
@@ -97,19 +102,12 @@ Creature::Creature(bool carnivore) :carnivore(carnivore) {
 	mapX = NULL;
 	mapY = NULL;
 
-	cout << maxMass << endl;
-	cout << growthRate << endl;
-	cout << energyThreshold << endl;
-	cout << numOffspringRange << endl;
-	cout << numOffspringMedian << endl;
-	cout << lengthOfPregnancy << endl;
 	setCreatureID();
-	cout << creatureID[0] << " " << creatureID[1] << " " << creatureID[2] << endl;
 	//creatures start with a fixed percentage of their max energy
 	energy = maxEnergy * START_ENERGY_PERCENTAGE;
 	pregnant = false;
 	inHeat = false;
-	alive = true;
+	alive = false;
 			
 	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
 	age = -1;
@@ -124,14 +122,111 @@ Creature::Creature(bool carnivore) :carnivore(carnivore) {
 Creature::~Creature(){
 	//clean up, remember to delete from creature map
 	delete decisionTree;
+	for (int i = 0; i < 1; i++) {
+		if (baby[i] != NULL) {
+			//the creature is being deleted - should its unborn babies also be deleted?
+			baby[i]->kill();
+			baby[i] = NULL;
+		}
+	}
+}
+//initialise the creature from its parents
+
+void Creature::setCreatureAttributes(int* tree, int treeLength, bool _carnivore, float _maxMass, float _mass, float _energyThreshold, float _growthRate,
+	int _numOffspringRange, int _numOffspringMedian, int _lengthOfPregnancy) {
+
+	delete[] decisionTree;
+
+	active = false;
+	actionTaken = false;
+	lookedAround = false;
+
+	decisionTree = tree;
+	decisionTreeLength = treeLength;
+	carnivore = _carnivore;
+	maxMass = _maxMass;
+	mass = _mass;
+	energyThreshold = _energyThreshold;
+	growthRate = _growthRate;
+	numOffspringRange = _numOffspringRange;
+	numOffspringMedian = _numOffspringMedian;
+	lengthOfPregnancy = _lengthOfPregnancy;
+	mapX = NULL;
+	mapY = NULL;
+
+	checkVariablesWithinBounds();
+	setCreatureID();
+
+
+	pregnant = false;
+	inHeat = false;
+	alive = true;
+
+	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
+	age = -1;
+	//update creature variables
+	updateCreatureVariables();
+	//creatures start with a fixed percentage of their max energy
+	energy = maxEnergy * START_ENERGY_PERCENTAGE;
+
+	//curentTreeNode holds the current decision sub node, which at this point is the whole tree, needs to be cpoied
+	currentTreeNodeStart = 0;
+	currentTreeNodeEnd = decisionTreeLength - 1;
+}
+
+void Creature::setCreatureAttributes(Creature* creature) {
+	delete[] decisionTree;
+	active = false;
+	actionTaken = false;
+	lookedAround = false;
+
+	//create random decision tree between 20 and 60 total nodes
+	randomTree(20 + rand() % 40);
+	carnivore = creature->isCarnivore();
+	//get the variables of the provided creature and vary them by +-5%
+	maxMass = creature->getMaxMass() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getMaxMass();
+	energyThreshold = creature->getEnergyThreshold() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getEnergyThreshold();
+	growthRate = creature->getGrowthRate() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getGrowthRate();
+	numOffspringRange = creature->getNumOffspringRange() + (rand() % 3) - 1;
+	numOffspringMedian = creature->getNumOffspringMedian() + (rand() % 3) - 1;
+	lengthOfPregnancy = creature->getLengthOfPregnancy() + (rand() % 5) - 2;
+	mapX = NULL;
+	mapY = NULL;
+
+	checkVariablesWithinBounds();
+	setCreatureID();
+	mass = 0.9f * maxMass;
+
+	pregnant = false;
+	inHeat = false;
+	alive = true;
+
+	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
+	age = -1;
+	//update creature variables
+	updateCreatureVariables();
+
+	//creatures start with a fixed percentage of their max energy
+	energy = maxEnergy * START_ENERGY_PERCENTAGE;
+
+	//curentTreeNode holds the current decision sub node, which at this point is the whole tree, needs to be cpoied
+	currentTreeNodeStart = 0;
+	currentTreeNodeEnd = decisionTreeLength - 1;
 }
 
 bool Creature::update(){
 	decisionsBeforeAction = -1;
-	bool returnValue;
+	bool returnValue = true;
 	if (!alive) {
 		//remove the creature from the craeture map
 		creatureMap->removeCreature(mapX, mapY);
+		for (int i = 0; i < 1; i++) {
+			if (baby[i] != NULL) {
+				baby[i]->kill();
+				baby[i] = NULL;
+			}
+		}
+		active = false;
 		returnValue = false;
 	}
 	else {
@@ -726,14 +821,12 @@ void Creature::pregnancyCheck() {
 		inHeat = false;
 	}
 	else if (pregnant) {
-		
 		//give birth
 		int x = -1;
 		int y = -1;
 		while (baby[0] != NULL && x < 2) {
 			if (creatureMap->addCreature(baby[0], mapX + x, mapY + y)) {
-				creatureList->addCreature(baby[0]);
-				baby[0]->beBorn(mapX + x, mapY + y);
+				baby[0]->born(mapX + x, mapY + y);
 				baby[0] = NULL;
 			}
 			y++;
@@ -744,12 +837,12 @@ void Creature::pregnancyCheck() {
 		}
 		// make sure the whole babies list is empty before declaring not pregnant
 		pregnant = false;
-		
 	}
 }
 
-void Creature::beBorn(int x, int y) {
+void Creature::born(int x, int y) {
 	//TODO - need anything else here?
+	active = true;
 	mapX = x;
 	mapY = y;
 }
@@ -888,6 +981,7 @@ void Creature::replicate() {
 	int babyNumOffspringMedian = numOffspringMedian + (rand() % 3) - 1;
 	int babyLengthOfPregnancy = lengthOfPregnancy + (rand() % 5) - 2;
 
-	baby[0] = new Creature(babyTree, babyTreeLength, carnivore, babyMaxMass, babyMass, babyEnergyThreshold, babyGrowthRate,
-		babyNumOffspringRange, babyNumOffspringMedian, babyLengthOfPregnancy, 0, 0);
+	baby[0] = creatureList->getPoolCreature();
+	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, carnivore, babyMaxMass, babyMass, babyEnergyThreshold, babyGrowthRate,
+		babyNumOffspringRange, babyNumOffspringMedian, babyLengthOfPregnancy);
 }

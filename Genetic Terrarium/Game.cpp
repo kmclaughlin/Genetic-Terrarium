@@ -31,7 +31,7 @@ void Game::Start(int screenX, int screenY){
 	pixels = new sf::Uint8[width * height * 4];
 	texture.create(width, height);
 	sprite.setTexture(texture);
-	_gameState = Game::Running;
+	_gameState = Game::Paused;
 	
 	GameInit();
 
@@ -52,15 +52,20 @@ bool Game::isExiting(){
 
 void Game::GameLoop(){
 	sf::Event currentEvent;
-	clock_t startTime = clock();
+	clock_t startTime1 = clock();
+	clock_t startTime2 = clock();
+	
+	//update the game state
+	//if (_gameState == Game::Running) {
+	//}
+
 	while (_mainWindow.pollEvent(currentEvent)){
-		//cout << rand() << endl;
 		switch (_gameState){
 			case Game::Running:
 				for (int y = 0; y < height; y++)
 				{
 					for (int x = 0; x < width; x++)
-				{
+					{
 						if (creatureMap->getCell(x, y) == NULL) {
 							pixels[(y * width + x) * 4] = 0; // R
 							pixels[(y * width + x) * 4 + 1] = resourceMap->getCell(x, y) * 255 / resourceMap->getMaxEnergy(); // G
@@ -75,24 +80,40 @@ void Game::GameLoop(){
 						}
 					}
 				}
-				
 
 				texture.update(pixels);
 				_mainWindow.draw(sprite);
 				_mainWindow.display();
-				//cout << "screen: " << clock() - startTime << endl;
-				startTime = clock();
+				cout << "screen: " << clock() - startTime1 << endl;
+				startTime1 = clock();
 				resourceMap->update();
+				startTime2 = clock();
 				creatureList->update();
-				cout << "update: " << clock() - startTime << endl;
+				cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
 				if (currentEvent.type == sf::Event::Closed)
 				{
 					_gameState = Game::Exiting;
 				}
-				else if (currentEvent.key.code == 'a') {
-					cout << "AAA" << endl;
+				else if (currentEvent.KeyPressed) {
+					if (currentEvent.key.code == 'a') {
+						for (int i = 0; i < height; i++) {
+							for (int j = 0; j < width; j++) {
+								if (creatureMap->getCell(j, i) != NULL && !creatureMap->getCell(j, i)->isActive()) {
+									cout << creatureMap->getCell(j, i)  << " alive: " << creatureMap->getCell(j, i)->isAlive() << endl;
+								}
+							}
+						}
+					}
+				}
+				else if (currentEvent.KeyReleased){
+					_gameState = Game::Paused;
 				}
 				break;
+			case Game::Paused:
+				if (currentEvent.KeyReleased) {
+					_gameState = Game::Running;
+				}
+
 		}
 	}
 }
@@ -118,7 +139,7 @@ void Game::GameInit(){
 	
 	resourceMap = new ResourceMap(width, height, 1.0f);
 	creatureMap = new CreatureMap(width, height);
-	creatureList = new CreatureList();
+	creatureList = new CreatureList(2000);
 	//pass the maps to the creature class as static pointers so creatures can interact with them
 	Creature::resourceMap = resourceMap;
 	Creature::creatureMap = creatureMap;
@@ -128,21 +149,32 @@ void Game::GameInit(){
 		//creates full random creature to act as the template for a species
 		//it is passed as a variable to the newly created creatures in the  
 		Creature* speciesBase = new Creature(false);
+
+		cout << speciesBase->getMaxMass() << endl;
+		cout << speciesBase->getGrowthRate() << endl;
+		cout << speciesBase->getEnergyThreshold() << endl;
+		cout << speciesBase->getNumOffspringRange() << endl;
+		cout << speciesBase->getNumOffspringMedian() << endl;
+		cout << speciesBase->getLengthOfPregnancy() << endl;
+		cout << speciesBase->getCreatureID()[0] << " " << speciesBase->getCreatureID()[1] << " " << speciesBase->getCreatureID()[2] << endl;
 		
 		//want to create x num creatures, want to have max 1 creature to 9 cells
 		//find a random spot on the map with a border of 50 pixels around the edge
 		int speciesSpawnX = width / 2;//50 + rand() % (width - 100);
 		int speciesSpawnY = height / 2;//50 + rand() % (height - 100);
+		bool once = true;
 		for (int x = speciesSpawnX - 50; x < speciesSpawnX + 50; x++){
 			for (int y = speciesSpawnY - 50; y < speciesSpawnY + 50; y++){
 				//with a 1/14 chance put a creature in the cell if the cell is free
 				if (rand() % 30 < 1 && creatureMap->getCell(x, y) == NULL){
 					//create a creature in the same species as the randomised one
-					Creature* creature = new Creature(speciesBase, x, y);
+					Creature* creature = creatureList->getPoolCreature();
+					creature->setCreatureAttributes(speciesBase);
 					//add the creature to the map
 					creatureMap->addCreature(creature, x, y);
+					creature->born(x, y);
 					// add creature to the list
-					creatureList->addCreature(creature);
+					once = false;
 				}
 			}
 		}

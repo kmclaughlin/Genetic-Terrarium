@@ -10,15 +10,21 @@ class CreatureList;
 class Creature{
 public:
 	//constructor destructor
-	Creature(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energyThreshold, float growthRate,
-		int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy, int mapX, int mapY);
-	Creature(Creature* creature, int x, int y);
+	//Creature(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energyThreshold, float growthRate,
+	//	int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy, int mapX, int mapY);
+	//Creature(Creature* creature, int x, int y);
 	Creature(bool carnivore);
 	~Creature();
 
+	void setCreatureAttributes(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energyThreshold, float growthRate,
+		int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy);
+	void setCreatureAttributes(Creature* creature);
+	void born(int x, int y);
+
 	bool update();
+	bool isActive() { return active; };
 	void kill() { alive = false; };
-	bool isCarnivore() { return false; };
+	bool isCarnivore() { return carnivore; };
 	bool isAlive() { return alive; };
 	/*add iscarnivore check and carnivore bool to craeture as a var, or decide how herbs and carns differ and built the separate classes
 		finish off the creature lookaround and foodcompare functions may also consider moving without eating, need move actions and eat actions,
@@ -40,6 +46,7 @@ public:
 
 protected:
 	int decisionsBeforeAction;
+	bool active;
 	//the maximum time that the creature can spend deciding what to do this tick, when max time is reached the creature does nothing but next tick continues where
 	//it left off in the decision process
 	const int MAX_TIME = 1; //time in milliseconds
@@ -108,9 +115,9 @@ protected:
 	int currentTreeNodeStart;
 	int currentTreeNodeEnd;
 	//multiple functions will use the results of these checks, but only have to calc once per tick
-	bool lookedAround = false;
+	bool lookedAround;
 
-	bool actionTaken = false;
+	bool actionTaken;
 
 	void takeAction();
 	void updateCreatureVariables();
@@ -131,7 +138,6 @@ protected:
 
 	void generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTreeLength, int* mateDecisionTree, int* mateTreeLength);
 	void pregnancyCheck();
-	void beBorn(int x, int y);
 	void replicate();
 	/*
 	replicate

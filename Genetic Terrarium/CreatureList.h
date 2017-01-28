@@ -10,6 +10,7 @@ public:
 	
 	void update();
 	Creature* getPoolCreature();
+	int getAliveCreatures(Creature** &numOfAliveCreatures);
 
 private:
 	//node structure to build the creature list out of
@@ -24,7 +25,7 @@ private:
 	node* root;
 	node* activeNode;
 	int lengthOfList;
-	int numOfActiveCreatures;
+	int numOfAliveCreatures;
 };
 
 #endif

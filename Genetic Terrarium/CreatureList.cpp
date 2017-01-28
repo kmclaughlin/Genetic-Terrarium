@@ -9,7 +9,7 @@ CreatureList::CreatureList(int size) {
 	root = NULL;
 	activeNode = NULL;
 	lengthOfList = size;
-	numOfActiveCreatures = 0;
+	numOfAliveCreatures = 0;
 	for (int i = 0; i < size; i++) {
 		Creature* poolCreature = new Creature(false);
 
@@ -69,7 +69,7 @@ Creature* CreatureList::getPoolCreature() {
 		creatureToReturn = activeNode->creature;
 		activeNode = activeNode->previous;
 	}
-	numOfActiveCreatures++;
+	numOfAliveCreatures++;
 	return creatureToReturn;
 }
 
@@ -107,7 +107,7 @@ void CreatureList::returnCreatureToPool(node* creatureNodeToReturn) {
 	//delete creatureNodeToReturn->creature;
 	//creatureNodeToReturn->creature = NULL;
 	//delete creatureNodeToReturn;
-	numOfActiveCreatures--;
+	numOfAliveCreatures--;
 }
 
 //cycle through the entire list and update all the creatures
@@ -116,6 +116,7 @@ void CreatureList::update(){
 	float totalMass = 0;
 	float totalTreeLength = 0;
 	float totalDecisionsMade = 0;
+	float totalEnergy = 0;
 	//activeNode points to the first available pool creature, the next is the first active creature
 	node* current = NULL;
 	if (activeNode != NULL) {
@@ -134,6 +135,7 @@ void CreatureList::update(){
 				totalMass += current->creature->getMaxMass();
 				totalTreeLength += current->creature->getDecisionTreeLength();
 				totalDecisionsMade += current->creature->getDecisionsBeforeAction();
+				totalEnergy += current->creature->getEnergy();
 			}
 			else {
 				returnCreatureToPool(current);
@@ -145,8 +147,30 @@ void CreatureList::update(){
 		current = temp;
 	}
 	cout << "total creatures: " << count << "   average mass: " << totalMass / count << "  average tree length: " << totalTreeLength / count << endl;
-	cout << "total pool len : " << lengthOfList << "   num active: " << numOfActiveCreatures << "   average decisions b/ action: " << totalDecisionsMade / count << endl;
+	cout << "total pool len : " << lengthOfList << "  average energy: " << totalEnergy/count << "   average decisions b/ action: " << totalDecisionsMade / count << endl;
 }
+
+int CreatureList::getAliveCreatures(Creature** &aliveCreatures) {
+	aliveCreatures = new Creature*[numOfAliveCreatures];
+	node* current = NULL;
+	if (activeNode != NULL) {
+		current = activeNode->next;
+	}
+	else {
+		current = root;
+	}
+	int i = 0;
+	while (current != NULL && i < numOfAliveCreatures) {
+		aliveCreatures[i] = current->creature;
+		current = current->next;
+		i++;
+	}
+	if (!(current == NULL && i == numOfAliveCreatures)) {
+		cout << "numOfAliveCreatures did not equal actual number of alive creatures." << endl;
+	}
+	return numOfAliveCreatures;
+}
+
 /*
 act as pool and list of active creatures.
 have root pointer that points to start of chain of pool and active pointer that points to the start of the active section of the list

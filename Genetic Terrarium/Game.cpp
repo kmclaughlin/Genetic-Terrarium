@@ -56,51 +56,140 @@ void Game::GameLoop(){
 	clock_t startTime2 = clock();
 	
 	//update the game state
-	//if (_gameState == Game::Running) {
-	//}
+	if (_gameState == Game::Running) {
+
+		for (int y = 0; y < height; y++)
+		{
+			for (int x = 0; x < width; x++)
+			{
+				if (creatureMap->getCell(x, y) == NULL) {
+					pixels[(y * width + x) * 4] = 0; // R
+					pixels[(y * width + x) * 4 + 1] = resourceMap->getCell(x, y) * 255 / resourceMap->getMaxEnergy(); // G
+					pixels[(y * width + x) * 4 + 2] = 0; // B
+					pixels[(y * width + x) * 4 + 3] = 255; // A
+				}
+				else { //if (creatureMap->getCell(x, y) != NULL) {
+					pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0]; // R
+					pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1]; // G
+					pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
+					pixels[(y * width + x) * 4 + 3] = 255; // A
+				}
+			}
+		}
+
+		texture.update(pixels);
+		//cout << "screen: " << clock() - startTime1 << endl;
+		startTime1 = clock();
+		resourceMap->update();
+		startTime2 = clock();
+		creatureList->update();
+		cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
+	}
+	_mainWindow.draw(sprite);
+	_mainWindow.display();
 
 	while (_mainWindow.pollEvent(currentEvent)){
 		switch (_gameState){
 			case Game::Running:
-				for (int y = 0; y < height; y++)
-				{
-					for (int x = 0; x < width; x++)
-					{
-						if (creatureMap->getCell(x, y) == NULL) {
-							pixels[(y * width + x) * 4] = 0; // R
-							pixels[(y * width + x) * 4 + 1] = resourceMap->getCell(x, y) * 255 / resourceMap->getMaxEnergy(); // G
-							pixels[(y * width + x) * 4 + 2] = 0; // B
-							pixels[(y * width + x) * 4 + 3] = 255; // A
-						}
-						else { //if (creatureMap->getCell(x, y) != NULL) {
-							pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0]; // R
-							pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1]; // G
-							pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
-							pixels[(y * width + x) * 4 + 3] = 255; // A
-						}
-					}
-				}
-
-				texture.update(pixels);
-				_mainWindow.draw(sprite);
-				_mainWindow.display();
-				//cout << "screen: " << clock() - startTime1 << endl;
-				startTime1 = clock();
-				resourceMap->update();
-				startTime2 = clock();
-				creatureList->update();
-				cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
 				if (currentEvent.type == sf::Event::Closed)
 				{
 					_gameState = Game::Exiting;
 				}
 				else if (currentEvent.KeyReleased){
-					_gameState = Game::Paused;
+					if (currentEvent.key.code == 'r') {
+						_gameState = Game::Paused;
+					}
 				}
 				break;
 			case Game::Paused:
 				if (currentEvent.KeyReleased) {
-					_gameState = Game::Running;
+					if (currentEvent.key.code == 'r') {
+						_gameState = Game::Running;
+					}
+					else if (currentEvent.key.code == 's') {
+						//output to file
+						string filename;
+						cout << "Enter file name" << endl;
+						cin >> filename;
+
+						ofstream outputFile;
+						outputFile.open(filename);
+						if (outputFile.is_open()) {
+							Creature** aliveCreatures = NULL;
+							int numAliveCreatures = creatureList->getAliveCreatures(aliveCreatures);
+							for (int i = 0; i < numAliveCreatures; i++) {
+								if (aliveCreatures[i]->isActive()) {
+									outputFile << aliveCreatures[i]->getDecisionTreeLength() << " ";
+									int* decisionTree = aliveCreatures[i]->getDecisionTree();
+									int treeLength = aliveCreatures[i]->getDecisionTreeLength();
+									for (int i = 0; i < treeLength; i++) {
+										outputFile << decisionTree[i] << " ";
+									}
+									outputFile << aliveCreatures[i]->isCarnivore() << " "
+										<< aliveCreatures[i]->getMaxMass() << " "
+										<< aliveCreatures[i]->getEnergyThreshold() << " "
+										<< aliveCreatures[i]->getGrowthRate() << " "
+										<< aliveCreatures[i]->getNumOffspringRange() << " "
+										<< aliveCreatures[i]->getNumOffspringMedian() << " "
+										<< aliveCreatures[i]->getLengthOfPregnancy() << endl;
+								}
+							}
+							outputFile.close();
+							cout << "Creatures successfully saved to: " << filename << endl;
+						}
+						else {
+							cout << "Error - output file could not be opened. Creatures not saved." << endl;
+						}
+
+					}
+					else if (currentEvent.key.code == 'o') {
+						//read from file
+						string filename;// = "a.txt";
+						cout << "Enter file name" << endl;
+						cin >> filename;
+
+						ifstream inputFile;
+						inputFile.open(filename);
+						if (inputFile.is_open()) {
+							string line;
+							while (getline(inputFile, line))
+							{
+								istringstream iss(line);
+								int* decisionTree;
+								int decisionTreeLength, numOffspringRange, numOffspringMedian, lengthOfPregnancy;
+								bool carnivore;
+								float maxMass, mass, energyThreshold, growthRate;
+
+								iss >> decisionTreeLength;
+								decisionTree = new int[decisionTreeLength];
+								for (int i = 0; i < decisionTreeLength; i++) {
+									iss >> decisionTree[i];
+								}
+								if (!(iss >> carnivore >> maxMass >> energyThreshold >> growthRate >> numOffspringRange 
+									>> numOffspringMedian >> lengthOfPregnancy)) {
+									//indicates an error here, not sure how to deal with it
+									cout << "sstream input error" << endl;
+								}
+								mass = 0.5f * maxMass;
+
+								Creature* creatureFromFile = creatureList->getPoolCreature();
+
+								creatureFromFile->setCreatureAttributes(decisionTree, decisionTreeLength, carnivore, maxMass, mass, 0.0f,
+									energyThreshold, growthRate, numOffspringRange, numOffspringMedian, lengthOfPregnancy);
+								int x, y;
+								do {
+									x = 1 + xor128() % (width - 1);
+									y = 1 + xor128() % (height - 1);
+								} while (!creatureMap->addCreature(creatureFromFile, x, y));
+								creatureFromFile->born(x, y);
+							}
+							inputFile.close();
+							cout << "Creatures successfully loaded from: " << filename << endl;
+						}
+						else {
+							cout << "Error - input file could not be opened. Creatures not loaded." << endl;
+						}
+					}
 				}
 
 		}
@@ -119,14 +208,14 @@ void Game::GameInit(){
 	initialise resource map (change to have start in boon times, ie 1 in 3 cells mature
 	resource map and creature map need to be created and be vairables of main game file then passed by reference down to what ever needs them below
 	*/
-	int numHerbivoreSpecies = 1;
+	int numHerbivoreSpecies = 0;
 	int numCarnivoreSpecies = 0;
 	
 	//seed the random number generator
 	srand(static_cast <unsigned> (time(0)));
 	initialiseXorState();
 	//srand(1234567890);
-	
+
 	resourceMap = new ResourceMap(width, height, 1.0f);
 	creatureMap = new CreatureMap(width, height);
 	creatureList = new CreatureList(2000);
@@ -140,21 +229,20 @@ void Game::GameInit(){
 		//it is passed as a variable to the newly created creatures in the  
 		Creature* speciesBase = new Creature(false);
 
-		cout << speciesBase->getMaxMass() << endl;
-		cout << speciesBase->getGrowthRate() << endl;
-		cout << speciesBase->getEnergyThreshold() << endl;
-		cout << speciesBase->getNumOffspringRange() << endl;
-		cout << speciesBase->getNumOffspringMedian() << endl;
-		cout << speciesBase->getLengthOfPregnancy() << endl;
-		cout << speciesBase->getCreatureID()[0] << " " << speciesBase->getCreatureID()[1] << " " << speciesBase->getCreatureID()[2] << endl;
+		cout << speciesBase->getMaxMass() << endl
+			<< speciesBase->getGrowthRate() << endl
+			<< speciesBase->getEnergyThreshold() << endl
+			<< speciesBase->getNumOffspringRange() << endl
+			<< speciesBase->getNumOffspringMedian() << endl
+			<< speciesBase->getLengthOfPregnancy() << endl
+			<< speciesBase->getCreatureID()[0] << " " << speciesBase->getCreatureID()[1] << " " << speciesBase->getCreatureID()[2] << endl;
 		
 		//want to create x num creatures, want to have max 1 creature to 9 cells
 		//find a random spot on the map with a border of 50 pixels around the edge
 		int speciesSpawnX = width / 2;//50 + rand() % (width - 100);
 		int speciesSpawnY = height / 2;//50 + rand() % (height - 100);
-		bool once = true;
-		for (int x = speciesSpawnX - 50; x < speciesSpawnX + 50; x++){
-			for (int y = speciesSpawnY - 50; y < speciesSpawnY + 50; y++){
+		for (int x = speciesSpawnX - 150; x < speciesSpawnX + 150; x++){
+			for (int y = speciesSpawnY - 100; y < speciesSpawnY + 100; y++){
 				//with a 1/14 chance put a creature in the cell if the cell is free
 				if (xor128() % 30 < 1 && creatureMap->getCell(x, y) == NULL){
 					//create a creature in the same species as the randomised one
@@ -164,7 +252,38 @@ void Game::GameInit(){
 					creatureMap->addCreature(creature, x, y);
 					creature->born(x, y);
 					// add creature to the list
-					once = false;
+				}
+			}
+		}
+	}
+	for (int i = 0; i < numCarnivoreSpecies; i++) {
+		//creates full random creature to act as the template for a species
+		//it is passed as a variable to the newly created creatures in the  
+		Creature* speciesBase = new Creature(true);
+
+		cout << speciesBase->getMaxMass() << endl
+			<< speciesBase->getGrowthRate() << endl
+			<< speciesBase->getEnergyThreshold() << endl
+			<< speciesBase->getNumOffspringRange() << endl
+			<< speciesBase->getNumOffspringMedian() << endl
+			<< speciesBase->getLengthOfPregnancy() << endl
+			<< speciesBase->getCreatureID()[0] << " " << speciesBase->getCreatureID()[1] << " " << speciesBase->getCreatureID()[2] << endl;
+
+		//want to create x num creatures, want to have max 1 creature to 9 cells
+		//find a random spot on the map with a border of 50 pixels around the edge
+		int speciesSpawnX = width / 2;//50 + rand() % (width - 100);
+		int speciesSpawnY = height / 2;//50 + rand() % (height - 100);
+		for (int x = speciesSpawnX - 250; x < speciesSpawnX + 250; x++) {
+			for (int y = speciesSpawnY - 140; y < speciesSpawnY + 140; y++) {
+				//with a 1/14 chance put a creature in the cell if the cell is free
+				if (xor128() % 60 < 1 && creatureMap->getCell(x, y) == NULL) {
+					//create a creature in the same species as the randomised one
+					Creature* creature = creatureList->getPoolCreature();
+					creature->setCreatureAttributes(speciesBase);
+					//add the creature to the map
+					creatureMap->addCreature(creature, x, y);
+					creature->born(x, y);
+					// add creature to the list
 				}
 			}
 		}

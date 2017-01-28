@@ -11,9 +11,8 @@ ResourceMap::ResourceMap(int screenX, int screenY, float percentage){
 
 	//initialise array, all cells assigned an energy value between 0 and MAX_PLANT_ENERGY
 	for (int i = 0; i < width * height; i++){
-		if (RANDOM_NORMALISED_FLOAT < percentage) {
-		//if (rand() % 100 < 1){
-			map[i] = MAX_PLANT_ENERGY;// rand() % 3;
+		if (RANDOM_NORMALISED_FLOAT < percentage * 0.35) {
+			map[i] = MAX_PLANT_ENERGY;// *RANDOM_NORMALISED_FLOAT;
 		}
 		else {
 			map[i] = 0;

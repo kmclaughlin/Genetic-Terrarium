@@ -10,6 +10,7 @@ public:
 	~CreatureMap();
 
 	Creature* getCell(int x, int y);
+	bool isCellFree(int x, int y);
 	bool addCreature(Creature* creature, int x, int y);
 	bool moveCreature(int currentX, int currentY, char dir);
 	void removeCreature(int x, int y);

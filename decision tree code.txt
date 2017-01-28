@@ -1,0 +1,32 @@
+100	900	2100	2	5	2300	6	5	2000	400	1400	5	1000	1400	2	1100	5	6	1500	600	3	3	1300	1000	1100	1	5	1	5	200	3	2100	900	4	100	6	300	3	6	1	1800	5	5
+
+case 1: no action
+case 2: move up
+case 3: move down
+case 4: move left
+case 5: move right
+case 6: become pregnant
+
+case 100: food up rank 1
+case 200: food down rank 1
+case 300: food left rank 1
+case 400: food right rank 1
+case 500: food up rank 2
+case 600: food down rank 2
+case 700: food left rank 2
+case 800: food right rank 2
+case 900: herbivores up rank 1
+case 1000: herbivores down rank 1
+case 1100: herbivores left rank 1
+case 1200: herbivores right rank 1
+case 1300: herbivores up rank 2
+case 1400: herbivores down rank 2
+case 1500: herbivores left rank 2
+case 1600: herbivores right rank 2
+case 1700: energy > energy threshold
+case 1800: if pregnant
+case 1900: if mature
+case 2000: if cell up is free
+case 2100: if cell down is free
+case 2200: if cell left is free
+case 2300: if cell right is free

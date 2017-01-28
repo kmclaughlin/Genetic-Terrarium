@@ -14,7 +14,7 @@ public:
 	Creature(bool carnivore);
 	~Creature();
 
-	void setCreatureAttributes(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energyThreshold, float growthRate,
+	void setCreatureAttributes(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energy, float energyThreshold, float growthRate,
 		int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy);
 	void setCreatureAttributes(Creature* creature);
 	void born(int x, int y);
@@ -22,20 +22,22 @@ public:
 	bool update();
 	bool isActive() { return active; };
 	void kill() { alive = false; };
-	bool isCarnivore() { return carnivore; };
 	bool isAlive() { return alive; };
 	/*add iscarnivore check and carnivore bool to craeture as a var, or decide how herbs and carns differ and built the separate classes
 		finish off the creature lookaround and foodcompare functions may also consider moving without eating, need move actions and eat actions,
 		could help with large herbs eating more of the plant than smaller herbs*/
 
+	int* getDecisionTree() { return decisionTree; };
+	int getDecisionTreeLength() { return decisionTreeLength; };
+	bool isCarnivore() { return carnivore; };
 	float getMaxMass() { return maxMass; };
+	float getEnergy() { return energy; };
 	float getEnergyThreshold() { return energyThreshold; };
 	float getGrowthRate() { return growthRate; };
 	int getNumOffspringRange() { return numOffspringRange; };
 	int getNumOffspringMedian() { return numOffspringMedian; };
 	int getLengthOfPregnancy() { return lengthOfPregnancy; };
 	int* getCreatureID() { return creatureID; };
-	int getDecisionTreeLength() { return decisionTreeLength; };
 	int getDecisionsBeforeAction() { return decisionsBeforeAction; };
 
 	static ResourceMap* resourceMap;
@@ -49,9 +51,9 @@ protected:
 	//it left off in the decision process
 	const int MAX_TIME = 1; //time in milliseconds
 	const float MAX_DEFENSE = 1.0;
-	const float START_ENERGY_PERCENTAGE = 0.75 / 2; //maybe 
+	const float START_ENERGY_PERCENTAGE = 0.75f / 10.0f; //maybe 
 	const float MOVEMENT_COST_CONST = 0.005f;
-	const float MAX_ENERGY_CONST = 2 * 0.75;
+	const float MAX_ENERGY_CONST = 0.75f *10.0f;
 	const float ENERGY_TO_MASS_CONST = 0.5;
 	//These may be needed to set random values
 	const float MAX_MAX_MASS = 60.0f;
@@ -60,7 +62,8 @@ protected:
 	const int MAX_NUM_OFFSPRING_MEDIAN = 1;
 	const int MAX_LENGTH_OF_PREGNANCY = 10;
 	//TODO - make this a creature specific variable?
-	const float MUTATION_RATE = 0.15f;
+	const float MUTATION_RATE = 0.2f;
+	const float CHANCE_OF_DEATH = 0.000005f;
 	//variables used to help define the creatures behaviour
 	//need to lose energy every turn based on mass regardless of action, then lose mass based on action ie movement.
 	//need a no action action.
@@ -91,15 +94,15 @@ protected:
 	int creatureID[3];
 
 	// functional variables
-	float foodNearby[4];
-	int enemyNearby[4];
+	float plantsNearby[4];
+	int carnivoreNearby[4];
 	int friendlyNearby[4];
-	int animalNearby[4];
+	int herbivoreNearby[4];
 
-	int foodRank[4];
-	int enemyRank[4];
+	int plantsRank[4];
+	int carnivoreRank[4];
 	int friendlyRank[4];
-	int animalRank[4];
+	int herbivoreRank[4];
 	// fights nearby
 	// carcasses nearby
 	// injured nearby
@@ -122,13 +125,12 @@ protected:
 
 	void lookAround();
 
-	bool foodCompare(char dir, int rank);
-	bool animalCompare(char dir, int rank);
-	bool predatorCompare();
+	bool plantsCompare(char dir, int rank);
+	bool herbivoreCompare(char dir, int rank);
+	bool carnivoreCompare(char dir, int rank);
 	
 	void nextTreeNode(bool lastDecision);
 	bool isOutcomeAction(bool decision);
-	bool isCellFree(char dir);
 
 	void randomTree(int length);
 	void checkVariablesWithinBounds();

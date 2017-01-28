@@ -29,6 +29,16 @@ Creature* CreatureMap::getCell(int x, int y){
 	}
 }
 
+bool CreatureMap::isCellFree(int x, int y) {
+	//check input is within bounds then return cell contents
+	if (x > 0 && x < width && y > 0 && y < height && map[y * width + x] == NULL) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 bool CreatureMap::addCreature(Creature* creature, int x, int y){
 	//check the desired cell is within the bounds of the array and is empty
 	if (x > 0 && x < width && y > 0 && y < height && map[y*width + x] == NULL){

@@ -29,6 +29,7 @@ private:
 	static ResourceMap* resourceMap;
 	static CreatureMap* creatureMap;
 	static CreatureList* creatureList;
+	static int loopCount;
 };
 
 #endif

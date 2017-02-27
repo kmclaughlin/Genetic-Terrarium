@@ -122,8 +122,8 @@ void Game::GameLoop(){
 									outputFile << aliveCreatures[i]->getDecisionTreeLength() << " ";
 									int* decisionTree = aliveCreatures[i]->getDecisionTree();
 									int treeLength = aliveCreatures[i]->getDecisionTreeLength();
-									for (int i = 0; i < treeLength; i++) {
-										outputFile << decisionTree[i] << " ";
+									for (int j = 0; j < treeLength; j++) {
+										outputFile << decisionTree[j] << " ";
 									}
 									outputFile << aliveCreatures[i]->isCarnivore() << " "
 										<< aliveCreatures[i]->getMaxMass() << " "
@@ -208,7 +208,7 @@ void Game::GameInit(){
 	initialise resource map (change to have start in boon times, ie 1 in 3 cells mature
 	resource map and creature map need to be created and be vairables of main game file then passed by reference down to what ever needs them below
 	*/
-	int numHerbivoreSpecies = 0;
+	int numHerbivoreSpecies = 1;
 	int numCarnivoreSpecies = 0;
 	
 	//seed the random number generator

@@ -12,6 +12,7 @@ update flesh out and finish
 craeture creation and destruction - need full initiation of variables that are dependant on other variables
 is "isoutcomeACtion" neccessary??
 creature species signature calculate
+split decision trees out int its own object
 
 */
 //id's of actions (terminators) and decisions (nodes) for update switch and filling decision tree arrays
@@ -202,7 +203,7 @@ bool Creature::update(){
 					energy -= movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && creatureMap->getCell(mapX, mapY + 1) != NULL && !creatureMap->getCell(mapX, mapY + 1)->isCarnivore()) {
+				else if (carnivore && creatureMap->getCell(mapX, mapY + 1) != NULL) {//&& !creatureMap->getCell(mapX, mapY + 1)->isCarnivore()) {
 					energy += creatureMap->getCell(mapX, mapY + 1)->getEnergy();
 					creatureMap->getCell(mapX, mapY + 1)->kill();
 				}
@@ -215,7 +216,7 @@ bool Creature::update(){
 					energy -= movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && creatureMap->getCell(mapX, mapY - 1) != NULL && !creatureMap->getCell(mapX, mapY - 1)->isCarnivore()) {
+				else if (carnivore && creatureMap->getCell(mapX, mapY - 1) != NULL ){//&& !creatureMap->getCell(mapX, mapY - 1)->isCarnivore()) {
 					energy += creatureMap->getCell(mapX, mapY - 1)->getEnergy();
 					creatureMap->getCell(mapX, mapY - 1)->kill();
 				}
@@ -228,7 +229,7 @@ bool Creature::update(){
 					energy -= movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && creatureMap->getCell(mapX - 1, mapY) != NULL && !creatureMap->getCell(mapX - 1, mapY)->isCarnivore()) {
+				else if (carnivore && creatureMap->getCell(mapX - 1, mapY) != NULL) {//&& !creatureMap->getCell(mapX - 1, mapY)->isCarnivore()) {
 					energy += creatureMap->getCell(mapX - 1, mapY)->getEnergy();
 					creatureMap->getCell(mapX - 1, mapY)->kill();
 				}
@@ -241,7 +242,7 @@ bool Creature::update(){
 					energy -= movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && creatureMap->getCell(mapX + 1, mapY) != NULL && !creatureMap->getCell(mapX + 1, mapY)->isCarnivore()) {
+				else if (carnivore && creatureMap->getCell(mapX + 1, mapY) != NULL) {//&& !creatureMap->getCell(mapX + 1, mapY)->isCarnivore()) {
 					energy += creatureMap->getCell(mapX + 1, mapY)->getEnergy();
 					creatureMap->getCell(mapX + 1, mapY)->kill();
 				}
@@ -544,17 +545,27 @@ void Creature::lookAround() {
 								 2, 3, 4, 3, 2,
 								 1, 2, 3, 2, 1 };
 
-	int carnivoreWeights[121] = { 1, 2, 3, 4,  5,  6,  5, 4, 3, 2, 1,
-								  2, 3, 4, 5,  6,  7,  6, 5, 4, 3, 2,
-								  3, 4, 5, 6,  7,  8,  7, 6, 5, 4, 3,
-								  4, 5, 6, 7,  8,  9,  8, 7, 6, 5, 4,
-								  5, 6, 7, 8,  9, 10,  9, 8, 7, 6, 5,
-								  6, 7, 8, 9, 10,  0, 10, 9, 8, 7, 6,
-								  5, 6, 7, 8,  9, 10,  9, 8, 7, 6, 5,
-								  4, 5, 6, 7,  8,  9,  8, 7, 6, 5, 4,
-								  3, 4, 5, 6,  7,  8,  7, 6, 5, 4, 3,
-								  2, 3, 4, 5,  6,  7,  6, 5, 4, 3, 2,
-								  1, 2, 3, 4,  5,  6,  5, 4, 3, 2, 1};
+	int carnivoreWeights[441] = {  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,
+								   2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,
+								   3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,
+								   4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,
+								   5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,
+								   6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,
+								   7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,
+								   8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,
+								   9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,
+								  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
+								  11, 12, 13, 14, 15, 16, 17, 18, 19, 20,  0, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11,
+								  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
+								   9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,
+								   8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 16, 15, 14, 13, 12, 11, 10,  9,  8,
+								   7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,
+								   6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,
+								   5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,
+								   4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,
+								   3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,
+								   2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,
+								   1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1 };
 	//reset food animal comparators
 	for (int i = 0; i < 4; i++) {
 		//TODO - change food nearby to a float and have it track energy content not plant maturity, then also add a food in current position comparison
@@ -567,8 +578,8 @@ void Creature::lookAround() {
 	//
 	int weightsIndex = 0;
 	if (carnivore) {
-		for (int y = mapY - 5; y < mapY + 6; y++) {
-			for (int x = mapX - 5; x < mapX + 6; x++) {
+		for (int y = mapY - 10; y < mapY + 11; y++) {
+			for (int x = mapX - 10; x < mapX + 11; x++) {
 				if (y > mapY) {
 					//check cell contents
 					plantsNearby[0] += carnivoreWeights[weightsIndex] * resourceMap->getCell(x, y);

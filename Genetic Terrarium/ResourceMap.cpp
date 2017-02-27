@@ -11,7 +11,7 @@ ResourceMap::ResourceMap(int screenX, int screenY, float percentage){
 
 	//initialise array, all cells assigned an energy value between 0 and MAX_PLANT_ENERGY
 	for (int i = 0; i < width * height; i++){
-		if (RANDOM_NORMALISED_FLOAT < percentage * 0.35) {
+		if (RANDOM_NORMALISED_FLOAT < percentage ){//* 0.35) {
 			map[i] = MAX_PLANT_ENERGY;// *RANDOM_NORMALISED_FLOAT;
 		}
 		else {
@@ -37,6 +37,8 @@ float ResourceMap::getCell(int x, int y){
 }
 
 float ResourceMap::eatCell(int x, int y, float eatPercentage){
+	//don't neeed to bounds check because the thing doing the eating must be inside the bounds on the resource map
+	//may be poor practice though to make that assumption, so consider adding boundss check with a todo to remove for optimisation
 	//The amount of energy that is trying to be eaten
 	float returnValue = MAX_PLANT_ENERGY * eatPercentage;
 	//check that the value requested does not exceed the value in the cell
@@ -66,6 +68,7 @@ void ResourceMap::update(){
 				// if checking 2 events check the least likely first for efficiency
 				if (randomNumber < GROW_CHANCE && map[y * width + x] > 0) {
 						bufferMap[y * width + x] += SEEDLING_ENERGY; //plant grows
+						// TODO is this check necessary? can't grow once above max plant anyway, would possibly being above max plant break anything?
 						if (bufferMap[y * width + x] > MAX_PLANT_ENERGY) {
 							bufferMap[y * width + x] = MAX_PLANT_ENERGY;
 						}
@@ -81,6 +84,7 @@ void ResourceMap::update(){
 					for (int i = x - 2; i < x + 3; i++) {
 						for (int j = y - 2; j < y + 3; j++) {
 							//check that i and j are within the bounds of the array
+							//TODO maybe remove this check and only grow up to 2 pixels of border?
 							if (i > 0 && j > 0 && i < width && j < height) {
 								//consider having this at 90% max energy
 								if (map[j * width + i] >= MAX_PLANT_ENERGY) {

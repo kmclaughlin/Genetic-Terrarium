@@ -62,8 +62,8 @@ protected:
 	const int MAX_NUM_OFFSPRING_MEDIAN = 1;
 	const int MAX_LENGTH_OF_PREGNANCY = 10;
 	//TODO - make this a creature specific variable?
-	const float MUTATION_RATE = 0.2f;
-	const float CHANCE_OF_DEATH = 0.000005f;
+	const float MUTATION_RATE = 0.8f;// 0.2f;
+	const float CHANCE_OF_DEATH = 0;// .000005f;
 	//variables used to help define the creatures behaviour
 	//need to lose energy every turn based on mass regardless of action, then lose mass based on action ie movement.
 	//need a no action action.

@@ -928,7 +928,7 @@ void Creature::setCreatureID() {
 		creatureID[2] = 0;
 	}
 	else {
-		creatureID[0] = 127;
+		creatureID[0] = 0;// 127;
 		creatureID[2] = 255;
 	}
 	creatureID[1] = 0;
@@ -1089,9 +1089,9 @@ void Creature::replicate() {
 	int babyNumOffspringMedian = numOffspringMedian + (xor128() % 3) - 1;
 	int babyLengthOfPregnancy = lengthOfPregnancy + (xor128() % 5) - 2;
 	bool babyCarnivore = carnivore;
-	if (RANDOM_NORMALISED_FLOAT < 0.1) {
-		babyCarnivore = !carnivore;
-	}
+	//if (RANDOM_NORMALISED_FLOAT < 0.1) {
+		//babyCarnivore = !carnivore;
+	//}
 
 	baby[0] = creatureList->getPoolCreature();
 	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, babyCarnivore, babyMaxMass, babyMass, babyEnergy, babyEnergyThreshold, babyGrowthRate,

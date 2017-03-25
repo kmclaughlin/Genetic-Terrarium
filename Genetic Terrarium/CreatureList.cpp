@@ -7,26 +7,17 @@ using namespace std;
 //when list created it is empty, need to add creatures to it
 CreatureList::CreatureList(int size) {
 	root = NULL;
-	activeNode = NULL;
-	lengthOfList = size;
+	aliveNode = NULL;
+	lengthOfList = 0;
 	numOfAliveCreatures = 0;
-	for (int i = 0; i < size; i++) {
-		Creature* poolCreature = new Creature(false);
-
-		node* temp = root;
-		root = new node;
-		root->next = temp;
-		root->creature = poolCreature;
-		//the first time through this loop root will be null so there will be no node to get the previous off
-		if (temp != NULL) {
-			temp->previous = root;
-		}
-		//set active to be the very first creature created
-		else {
-			activeNode = root;
-		}
-
+	//add first creature and set alive node as it
+	addCreature(new Creature(false));
+	aliveNode = root;
+	//add the rest of the creatures
+	for (int i = 1; i < size; i++) {
+		addCreature(new Creature(false));
 	}
+	collectStats = false;
 }
 
 //the list is the access point for the creatures it contains, must go to each node in the list and delete the creature it contains and the node itself
@@ -58,16 +49,17 @@ Creature* CreatureList::getPoolCreature() {
 	
 	//if active node is NULL it has reached the end of the creature list and no more creature are in the pool to use.
 	//create a new craeture, add it to the list and return that
-	if (activeNode == NULL) {
+	if (aliveNode == NULL) {
 		creatureToReturn = new Creature(false);
 		addCreature(creatureToReturn);
 	}
 	else {
-		if (activeNode->creature == NULL) {
-			activeNode->creature = new Creature(false);
+		// should this ever happen?
+		if (aliveNode->creature == NULL) {
+			aliveNode->creature = new Creature(false);
 		}
-		creatureToReturn = activeNode->creature;
-		activeNode = activeNode->previous;
+		creatureToReturn = aliveNode->creature;
+		aliveNode = aliveNode->previous;
 	}
 	numOfAliveCreatures++;
 	return creatureToReturn;
@@ -76,51 +68,39 @@ Creature* CreatureList::getPoolCreature() {
 void CreatureList::returnCreatureToPool(node* creatureNodeToReturn) {
 
 	//get the node either side connected to each other and place node at root
+	// if creatureToReturn->previous == null then creatureToReturn == root
 	if (creatureNodeToReturn->previous != NULL) {
 		creatureNodeToReturn->previous->next = creatureNodeToReturn->next;
 		if (creatureNodeToReturn->next != NULL) {
 			creatureNodeToReturn->next->previous = creatureNodeToReturn->previous;
 		}
-	}
-
-	if (creatureNodeToReturn != root) {
+		
+		//creature is not root so when the list is routed around it move the craeture to the root of the list
 		creatureNodeToReturn->next = root;
 		root->previous = creatureNodeToReturn;
 		creatureNodeToReturn->previous = NULL;
 		root = creatureNodeToReturn;
 	}
-	if (activeNode == NULL){
-		activeNode = root;
+
+	// if aliveNode == null all pool creatures were in use, now therre is a free one so make aliveNode point to root, the node just pooled
+	if (aliveNode == NULL){
+		aliveNode = root;
 	}
-	/*
-	//before removing the current node from the list connect the previous node to the next
-	if (creatureNodeToReturn->next != NULL) {
-		creatureNodeToReturn->next->previous = creatureNodeToReturn->previous;
-	}
-	if (creatureNodeToReturn->previous != NULL) {
-		creatureNodeToReturn->previous->next = creatureNodeToReturn->next;
-	}
-	//if the current node being deleted is the root node, update the root to be the next node 
-	if (creatureNodeToReturn == root) {
-		root = creatureNodeToReturn->next;
-	}*/
-	//delete creatureNodeToReturn->creature;
-	//creatureNodeToReturn->creature = NULL;
-	//delete creatureNodeToReturn;
 	numOfAliveCreatures--;
 }
 
 //cycle through the entire list and update all the creatures
 void CreatureList::update(){
-	int count = 0;
+	//used to collect stats of creatures in the list
+	numOfActiveCreatures = 0;
 	float totalMass = 0;
 	float totalTreeLength = 0;
 	float totalDecisionsMade = 0;
 	float totalEnergy = 0;
 	//activeNode points to the first available pool creature, the next is the first active creature
 	node* current = NULL;
-	if (activeNode != NULL) {
-		current = activeNode->next;
+	if (aliveNode != NULL) {
+		current = aliveNode->next;
 	}
 	else {
 		current = root;
@@ -129,13 +109,15 @@ void CreatureList::update(){
 		//pooled creatures are dead, non pooled creatures are alive, but if they are not born yet they shouldn't be updated. They are not active
 		node* temp = current->next;
 		if (current->creature->isActive()) {
-			count++;
 			//creature.update() returns true unless the creature died, in which case it must be moved to the pool
 			if (current->creature->update()) {
-				totalMass += current->creature->getMaxMass();
-				totalTreeLength += current->creature->getDecisionTreeLength();
-				totalDecisionsMade += current->creature->getDecisionsBeforeAction();
-				totalEnergy += current->creature->getEnergy();
+				if (collectStats) {
+					numOfActiveCreatures++;
+					totalMass += current->creature->getMaxMass();
+					totalTreeLength += current->creature->getDecisionTreeLength();
+					totalDecisionsMade += current->creature->getDecisionsBeforeAction();
+					totalEnergy += current->creature->getEnergy();
+				}
 			}
 			else {
 				returnCreatureToPool(current);
@@ -146,15 +128,20 @@ void CreatureList::update(){
 		}
 		current = temp;
 	}
-	cout << "total creatures: " << count << "   average mass: " << totalMass / count << "  average tree length: " << totalTreeLength / count << endl;
-	cout << "total pool len : " << lengthOfList << "  average energy: " << totalEnergy/count << "   average decisions b/ action: " << totalDecisionsMade / count << endl;
+	if (collectStats) {
+		averageMass = totalMass / numOfActiveCreatures;
+		averageTreeLength = totalTreeLength / numOfActiveCreatures;
+		averageEnergy = totalEnergy / numOfActiveCreatures;
+		averageDecisionsBeforeActions = totalDecisionsMade / numOfActiveCreatures;
+		collectStats = false;
+	}
 }
 
 int CreatureList::getAliveCreatures(Creature** &aliveCreatures) {
 	aliveCreatures = new Creature*[numOfAliveCreatures];
 	node* current = NULL;
-	if (activeNode != NULL) {
-		current = activeNode->next;
+	if (aliveNode != NULL) {
+		current = aliveNode->next;
 	}
 	else {
 		current = root;

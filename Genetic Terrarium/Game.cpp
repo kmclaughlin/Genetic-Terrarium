@@ -57,7 +57,6 @@ void Game::GameLoop(){
 	
 	//update the game state
 	if (_gameState == Game::Running) {
-
 		for (int y = 0; y < height; y++)
 		{
 			for (int x = 0; x < width; x++)
@@ -82,7 +81,15 @@ void Game::GameLoop(){
 		startTime1 = clock();
 		resourceMap->update();
 		startTime2 = clock();
+			creatureList->collectCreatureStats();
 		creatureList->update();
+		cout << "total creatures: " << creatureList->getNumOfActiveCreatures()
+			<< "  av mass: " << creatureList->getAverageMass()
+			<< "  av tree len: " << creatureList->getAverageTreeLength() << endl
+			<< "total pool len : " << creatureList->getLengthOfList()
+			<< "  av energy: " << creatureList->getAverageEnergy()
+			<< "  av decisions b/ action: " << creatureList->getAverageDecisionsBeforeActions() << endl;
+		
 		cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
 	}
 	_mainWindow.draw(sprite);
@@ -102,7 +109,11 @@ void Game::GameLoop(){
 				}
 				break;
 			case Game::Paused:
-				if (currentEvent.KeyReleased) {
+				if (currentEvent.type == sf::Event::Closed)
+				{
+					_gameState = Game::Exiting;
+				}
+				else if (currentEvent.KeyReleased) {
 					if (currentEvent.key.code == 'r') {
 						_gameState = Game::Running;
 					}

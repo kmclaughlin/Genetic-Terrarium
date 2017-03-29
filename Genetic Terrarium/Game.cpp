@@ -5,6 +5,7 @@ using namespace std;
 //as these variables are static they need to be instanced manually
 Game::GameState Game::_gameState = Uninitialized;
 sf::RenderWindow Game::_mainWindow;
+tgui::Gui Game::gui{ Game::_mainWindow }; // Create the gui and attach it to the window
 sf::Texture Game::texture;
 sf::Sprite Game::sprite;
 sf::Uint8* Game::pixels;
@@ -34,6 +35,7 @@ void Game::Start(int screenX, int screenY){
 	_gameState = Game::Paused;
 	
 	GameInit();
+	GUISetup();
 
 	while (!isExiting())
 	{
@@ -81,43 +83,37 @@ void Game::GameLoop(){
 		startTime1 = clock();
 		resourceMap->update();
 		startTime2 = clock();
-			creatureList->collectCreatureStats();
+		//creatureList->collectCreatureStats();
 		creatureList->update();
-		cout << "total creatures: " << creatureList->getNumOfActiveCreatures()
+		/*cout << "total creatures: " << creatureList->getNumOfActiveCreatures()
 			<< "  av mass: " << creatureList->getAverageMass()
 			<< "  av tree len: " << creatureList->getAverageTreeLength() << endl
 			<< "total pool len : " << creatureList->getLengthOfList()
 			<< "  av energy: " << creatureList->getAverageEnergy()
 			<< "  av decisions b/ action: " << creatureList->getAverageDecisionsBeforeActions() << endl;
-		
+		*/
 		cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
 	}
+	_mainWindow.clear();
 	_mainWindow.draw(sprite);
+	gui.draw(); // Draw all widgets
 	_mainWindow.display();
 
 	while (_mainWindow.pollEvent(currentEvent)){
 		switch (_gameState){
 			case Game::Running:
-				if (currentEvent.type == sf::Event::Closed)
-				{
-					_gameState = Game::Exiting;
-				}
-				else if (currentEvent.KeyReleased){
-					if (currentEvent.key.code == 'r') {
+				if (currentEvent.KeyReleased == currentEvent.type){
+					if (currentEvent.key.code == 'r' - 'a') {
 						_gameState = Game::Paused;
 					}
 				}
 				break;
 			case Game::Paused:
-				if (currentEvent.type == sf::Event::Closed)
-				{
-					_gameState = Game::Exiting;
-				}
-				else if (currentEvent.KeyReleased) {
-					if (currentEvent.key.code == 'r') {
+				if (currentEvent.KeyReleased == currentEvent.type) {
+					if (currentEvent.key.code == 'r' - 'a') {
 						_gameState = Game::Running;
 					}
-					else if (currentEvent.key.code == 's') {
+					else if (currentEvent.key.code == 's' - 'a') {
 						//output to file
 						string filename;
 						cout << "Enter file name" << endl;
@@ -153,10 +149,10 @@ void Game::GameLoop(){
 						}
 
 					}
-					else if (currentEvent.key.code == 'o') {
+					else if (currentEvent.key.code == 'o' - 'a') {
 						//read from file
 						string filename;// = "a.txt";
-						cout << "Enter file name" << endl;
+						cout << "Enter file name" << endl;//TODO change back
 						cin >> filename;
 
 						ifstream inputFile;
@@ -202,8 +198,13 @@ void Game::GameLoop(){
 						}
 					}
 				}
-
 		}
+		if (currentEvent.type == sf::Event::Closed)
+		{
+			_gameState = Game::Exiting;
+		}
+
+		gui.handleEvent(currentEvent); // Pass the event to the widgets
 	}
 }
 
@@ -299,4 +300,187 @@ void Game::GameInit(){
 			}
 		}
 	}
+}
+
+void toggleShowMenu(tgui::Gui& gui) {
+
+	if (gui.get("tabs")->isVisible()) {
+		gui.get("tabs")->hide();
+		gui.get("controlPanel")->hide();
+		gui.get("infoPanel")->hide();
+		gui.get("menuButton")->setPosition(0, 0);
+	}
+	else {
+		gui.get("tabs")->show();
+		gui.get("controlPanel")->show();
+		gui.get("infoPanel")->hide();
+		gui.get("menuButton")->setPosition(254, 0);
+	}
+}
+void startStopSimulation() {
+
+}
+
+void onTabSelected(tgui::Gui& gui, std::string selectedTab)
+{
+	// Show the correct panel
+	if (selectedTab == "Controls")
+	{
+		gui.get("controlPanel")->show();
+		gui.get("infoPanel")->hide();
+	}
+	else if (selectedTab == "Creature Info")
+	{
+		gui.get("controlPanel")->hide();
+		gui.get("infoPanel")->show();
+	}
+}
+void Game::GUISetup() {
+	int panelWidth = 250;
+	int panelHeight = 1000;
+	int statsHeight = 250;
+	int textWidth = 300;
+
+	auto menuButton = tgui::Button::create();
+	menuButton->setPosition(0, 0);
+	menuButton->setSize(25, 25);
+	gui.add(menuButton, "menuButton");
+	
+	tgui::Tab::Ptr tabs = tgui::Tab::create();
+	tabs->add("Controls");
+	tabs->add("Creature Info");
+	tabs->setPosition(0, 0);
+	gui.add(tabs, "tabs");
+
+	// Create the first panel
+	tgui::Panel::Ptr panel1 = tgui::Panel::create();
+	panel1->setSize(panelWidth, panelHeight);
+	panel1->setPosition(tabs->getPosition().x, tabs->getPosition().y + tabs->getTabHeight());
+	gui.add(panel1, "controlPanel");
+
+	// Create the second panel (by copying of first one)
+	tgui::Panel::Ptr panel2 = tgui::Panel::copy(panel1);
+	gui.add(panel2, "infoPanel");
+
+	// Add some widgets to the panels
+	/*
+	start/stop
+	save creatures
+	load creatures
+	Console?
+	speed up slow down slider
+	zoom slider
+	button to show decision tree in new window
+	track creature?? have clicked creature leave a trail
+
+	stats
+	update times creatures and resources
+	size of pool
+
+	stats for all or for clicked species
+	Species: 
+	age of oldest: 
+	highest and lowest generations: 
+	average mass: 
+	percentage herbivores?: 
+	average tree length: 
+	average energy: 
+	decisions before actions: 
+	*/
+
+	//Start stop button
+	auto startStop = tgui::Button::create();
+	startStop->setPosition(100, 100);
+	startStop->setSize(80, 80);
+	startStop->setText("Start");
+	panel1->add(startStop, "startStop");
+	startStop->connect("pressed", toggleShowMenu, std::ref(gui));
+	
+	//Save button, file path and file name
+	auto save = tgui::Button::create();
+	save->setPosition(10, 200);
+	save->setSize(80, 80);
+	save->setText("    Save\nCreatures");
+	panel1->add(save, "save");
+	tgui::TextBox::Ptr savePath = tgui::TextBox::create();
+	savePath->setPosition(100, 200);
+	savePath->setSize(140, 40);
+	savePath->setText("/path/to/file");
+	panel1->add(savePath, "savePath");
+	tgui::TextBox::Ptr saveName = tgui::TextBox::create();
+	saveName->setPosition(100, 240);
+	saveName->setSize(140, 40);
+	saveName->setText("fileName.txt");
+	panel1->add(saveName, "saveName");
+
+	//load button, file path and file name
+	auto load = tgui::Button::create();
+	load->setPosition(10, 300);
+	load->setSize(80, 80);
+	load->setText("    Load\nCreatures");
+	panel1->add(load, "load");
+	tgui::TextBox::Ptr loadPath = tgui::TextBox::create();
+	loadPath->setPosition(100, 300);
+	loadPath->setSize(140, 40);
+	loadPath->setText("/path/to/file");
+	panel1->add(loadPath, "loadPath");
+	tgui::TextBox::Ptr loadName = tgui::TextBox::create();
+	loadName->setPosition(100, 340);
+	loadName->setSize(140, 40);
+	loadName->setText("fileName.txt");
+	panel1->add(loadName, "loadName");
+
+	//speed up slow down slider
+	tgui::Label::Ptr speedSliderLabel = tgui::Label::create();
+	speedSliderLabel->setPosition(60, 400);
+	speedSliderLabel->setText("Speed Slider");
+	panel1->add(speedSliderLabel, "speedSliderLabel");
+	tgui::Slider::Ptr speedSlider = tgui::Slider::create();
+	speedSlider->setPosition(20, 450);
+	speedSlider->setSize(210, 15);
+	speedSlider->setMinimum(1);
+	speedSlider->setMaximum(25);
+	panel1->add(speedSlider, "speedSlider");
+
+	//zoom slider
+	tgui::Label::Ptr zoomSliderLabel = tgui::Label::create();
+	zoomSliderLabel->setPosition(100, 500);
+	zoomSliderLabel->setText("Zoom");
+	panel1->add(zoomSliderLabel, "zoomSliderLabel");
+	tgui::Slider::Ptr zoomSlider = tgui::Slider::create();
+	zoomSlider->setPosition(20, 550);
+	zoomSlider->setSize(210, 15);
+	zoomSlider->setMinimum(0);
+	zoomSlider->setMaximum(10);
+	panel1->add(zoomSlider, "zoomSlider");
+
+	string statsText = "Update Times \n"
+		"Resources: 0 \n"
+		"Creatures: 0 \n"
+		"Pool size: 0 \n\n\n"
+		"Species: \n"
+		"Number of Creatures:\n"
+		"Age of oldest:\n"
+		"Highest generation: \n"
+		"Lowest generation:\n"
+		"Average mass:\n"
+		"Percentage herbivores:\n"
+		"Average tree length:\n"
+		"Average energy: \n"
+		"Decisions b\\ actions: ";
+	tgui::Label::Ptr mainStats = tgui::Label::create();
+	mainStats->setPosition(10, 10);
+	mainStats->setText(statsText);
+	panel2->add(mainStats, "mainStats");
+
+	// Enable callback when another tab is selected (pass reference to the gui as first parameter)
+	tabs->connect("TabSelected", onTabSelected, std::ref(gui));
+
+	menuButton->connect("pressed", toggleShowMenu, std::ref(gui));
+
+	// Select the first tab and only show the first panel
+	tabs->select("Controls");
+	tabs->hide();
+	panel1->hide();
+	panel2->hide();
 }

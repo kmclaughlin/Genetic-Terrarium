@@ -5,6 +5,7 @@ using namespace std;
 //as these variables are static they need to be instanced manually
 Game::GameState Game::_gameState = Uninitialized;
 sf::RenderWindow Game::_mainWindow;
+sf::View Game::_view;
 tgui::Gui Game::gui{ Game::_mainWindow }; // Create the gui and attach it to the window
 sf::Texture Game::texture;
 sf::Sprite Game::sprite;
@@ -14,6 +15,9 @@ int Game::height = NULL;
 ResourceMap* Game::resourceMap = NULL;
 CreatureMap* Game::creatureMap = NULL;
 CreatureList* Game::creatureList = NULL;
+bool Game::enableKeyPresses = true;
+int Game::speedFactor = 25;
+tgui::Label::Ptr Game::displayedStats = NULL;
 
 void Game::Start(int screenX, int screenY){
 	/*start() should only be run once when the program is launched, therefore we
@@ -33,13 +37,17 @@ void Game::Start(int screenX, int screenY){
 	texture.create(width, height);
 	sprite.setTexture(texture);
 	_gameState = Game::Paused;
-	
+	_view.reset(sf::FloatRect(0, 0, width, height));
+	_mainWindow.setView(_view);
+
 	GameInit();
 	GUISetup();
 
+	clock_t runSpeedLimiter = clock();
+	clock_t statTimer = clock();
 	while (!isExiting())
 	{
-		GameLoop();
+		GameLoop(runSpeedLimiter, statTimer);
 	}
 
 	_mainWindow.close();
@@ -52,13 +60,14 @@ bool Game::isExiting(){
 		return false;
 }
 
-void Game::GameLoop(){
+void Game::GameLoop(clock_t &runSpeedLimiter, clock_t &statTimer){
 	sf::Event currentEvent;
 	clock_t startTime1 = clock();
 	clock_t startTime2 = clock();
 	
 	//update the game state
-	if (_gameState == Game::Running) {
+	if (_gameState == Game::Running && clock() - runSpeedLimiter  > 20*(25 - speedFactor)) {
+		runSpeedLimiter = clock();
 		for (int y = 0; y < height; y++)
 		{
 			for (int x = 0; x < width; x++)
@@ -79,19 +88,31 @@ void Game::GameLoop(){
 		}
 
 		texture.update(pixels);
-		//cout << "screen: " << clock() - startTime1 << endl;
 		startTime1 = clock();
 		resourceMap->update();
 		startTime2 = clock();
-		//creatureList->collectCreatureStats();
 		creatureList->update();
-		/*cout << "total creatures: " << creatureList->getNumOfActiveCreatures()
-			<< "  av mass: " << creatureList->getAverageMass()
-			<< "  av tree len: " << creatureList->getAverageTreeLength() << endl
-			<< "total pool len : " << creatureList->getLengthOfList()
-			<< "  av energy: " << creatureList->getAverageEnergy()
-			<< "  av decisions b/ action: " << creatureList->getAverageDecisionsBeforeActions() << endl;
-		*/
+		
+		if (clock() - statTimer > 500){
+			string statsText = "Update Times "
+				"\nResources:     " + to_string(startTime2 - startTime1) +
+				"\nCreatures:     " + to_string(clock() - startTime2) +
+				"\nPool size:     " + to_string(creatureList->getNumOfActiveCreatures()) +
+				"\nTotal Ticks:   " + to_string(0) +
+				"\n\n\nSpecies: "
+				"\nNum of Creatures: " + to_string(creatureList->getNumOfActiveCreatures()) +
+				"\nAge of oldest:    " + to_string(0) +
+				"\nHighest gen:      " + to_string(0) +
+				"\nLowest gen:       " + to_string(0) +
+				"\nAverage mass:     " + to_string((int)creatureList->getAverageMass()) +
+				"\n% herbivores:     " + to_string(0) +
+				"\nAv tree length:   " + to_string((int)creatureList->getAverageTreeLength()) +
+				"\nAv energy:        " + to_string((int)creatureList->getAverageEnergy()) +
+				"\nDecs b\\ actions:  " + to_string((int)creatureList->getAverageDecisionsBeforeActions());
+			displayedStats->setText(statsText);
+			creatureList->collectCreatureStats();
+			statTimer = clock();
+		}
 		cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
 	}
 	_mainWindow.clear();
@@ -102,100 +123,16 @@ void Game::GameLoop(){
 	while (_mainWindow.pollEvent(currentEvent)){
 		switch (_gameState){
 			case Game::Running:
-				if (currentEvent.KeyReleased == currentEvent.type){
+				if (currentEvent.KeyReleased == currentEvent.type && enableKeyPresses){
 					if (currentEvent.key.code == 'r' - 'a') {
 						_gameState = Game::Paused;
 					}
 				}
 				break;
 			case Game::Paused:
-				if (currentEvent.KeyReleased == currentEvent.type) {
+				if (currentEvent.KeyReleased == currentEvent.type && enableKeyPresses) {
 					if (currentEvent.key.code == 'r' - 'a') {
 						_gameState = Game::Running;
-					}
-					else if (currentEvent.key.code == 's' - 'a') {
-						//output to file
-						string filename;
-						cout << "Enter file name" << endl;
-						cin >> filename;
-
-						ofstream outputFile;
-						outputFile.open(filename);
-						if (outputFile.is_open()) {
-							Creature** aliveCreatures = NULL;
-							int numAliveCreatures = creatureList->getAliveCreatures(aliveCreatures);
-							for (int i = 0; i < numAliveCreatures; i++) {
-								if (aliveCreatures[i]->isActive()) {
-									outputFile << aliveCreatures[i]->getDecisionTreeLength() << " ";
-									int* decisionTree = aliveCreatures[i]->getDecisionTree();
-									int treeLength = aliveCreatures[i]->getDecisionTreeLength();
-									for (int j = 0; j < treeLength; j++) {
-										outputFile << decisionTree[j] << " ";
-									}
-									outputFile << aliveCreatures[i]->isCarnivore() << " "
-										<< aliveCreatures[i]->getMaxMass() << " "
-										<< aliveCreatures[i]->getEnergyThreshold() << " "
-										<< aliveCreatures[i]->getGrowthRate() << " "
-										<< aliveCreatures[i]->getNumOffspringRange() << " "
-										<< aliveCreatures[i]->getNumOffspringMedian() << " "
-										<< aliveCreatures[i]->getLengthOfPregnancy() << endl;
-								}
-							}
-							outputFile.close();
-							cout << "Creatures successfully saved to: " << filename << endl;
-						}
-						else {
-							cout << "Error - output file could not be opened. Creatures not saved." << endl;
-						}
-
-					}
-					else if (currentEvent.key.code == 'o' - 'a') {
-						//read from file
-						string filename;// = "a.txt";
-						cout << "Enter file name" << endl;//TODO change back
-						cin >> filename;
-
-						ifstream inputFile;
-						inputFile.open(filename);
-						if (inputFile.is_open()) {
-							string line;
-							while (getline(inputFile, line))
-							{
-								istringstream iss(line);
-								int* decisionTree;
-								int decisionTreeLength, numOffspringRange, numOffspringMedian, lengthOfPregnancy;
-								bool carnivore;
-								float maxMass, mass, energyThreshold, growthRate;
-
-								iss >> decisionTreeLength;
-								decisionTree = new int[decisionTreeLength];
-								for (int i = 0; i < decisionTreeLength; i++) {
-									iss >> decisionTree[i];
-								}
-								if (!(iss >> carnivore >> maxMass >> energyThreshold >> growthRate >> numOffspringRange 
-									>> numOffspringMedian >> lengthOfPregnancy)) {
-									//indicates an error here, not sure how to deal with it
-									cout << "sstream input error" << endl;
-								}
-								mass = 0.5f * maxMass;
-
-								Creature* creatureFromFile = creatureList->getPoolCreature();
-
-								creatureFromFile->setCreatureAttributes(decisionTree, decisionTreeLength, carnivore, maxMass, mass, 0.0f,
-									energyThreshold, growthRate, numOffspringRange, numOffspringMedian, lengthOfPregnancy);
-								int x, y;
-								do {
-									x = 1 + xor128() % (width - 1);
-									y = 1 + xor128() % (height - 1);
-								} while (!creatureMap->addCreature(creatureFromFile, x, y));
-								creatureFromFile->born(x, y);
-							}
-							inputFile.close();
-							cout << "Creatures successfully loaded from: " << filename << endl;
-						}
-						else {
-							cout << "Error - input file could not be opened. Creatures not loaded." << endl;
-						}
 					}
 				}
 		}
@@ -205,6 +142,88 @@ void Game::GameLoop(){
 		}
 
 		gui.handleEvent(currentEvent); // Pass the event to the widgets
+	}
+}
+
+void Game::saveCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr filenameTextBox) {
+	string path = pathTextBox->getText();
+	string filename = filenameTextBox->getText();
+	//output to file
+	ofstream outputFile;
+	outputFile.open(path + filename);
+	if (outputFile.is_open()) {
+		Creature** aliveCreatures = NULL;
+		int numAliveCreatures = creatureList->getAliveCreatures(aliveCreatures);
+		for (int i = 0; i < numAliveCreatures; i++) {
+			if (aliveCreatures[i]->isActive()) {
+				outputFile << aliveCreatures[i]->getDecisionTreeLength() << " ";
+				int* decisionTree = aliveCreatures[i]->getDecisionTree();
+				int treeLength = aliveCreatures[i]->getDecisionTreeLength();
+				for (int j = 0; j < treeLength; j++) {
+					outputFile << decisionTree[j] << " ";
+				}
+				outputFile << aliveCreatures[i]->isCarnivore() << " "
+					<< aliveCreatures[i]->getMaxMass() << " "
+					<< aliveCreatures[i]->getEnergyThreshold() << " "
+					<< aliveCreatures[i]->getGrowthRate() << " "
+					<< aliveCreatures[i]->getNumOffspringRange() << " "
+					<< aliveCreatures[i]->getNumOffspringMedian() << " "
+					<< aliveCreatures[i]->getLengthOfPregnancy() << endl;
+			}
+		}
+		outputFile.close();
+		cout << "Creatures successfully saved to: " << filename << endl;
+	}
+	else {
+		cout << "Error - output file could not be opened. Creatures not saved." << endl;
+	}
+}
+
+void Game::loadCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr filenameTextBox) {
+	string path = pathTextBox->getText();
+	string filename = filenameTextBox->getText();
+	cout << path << " " << filename << endl;
+	//read from file
+	ifstream inputFile;
+	inputFile.open(path + filename);
+	if (inputFile.is_open()) {
+		string line;
+		while (getline(inputFile, line))
+		{
+			istringstream iss(line);
+			int* decisionTree;
+			int decisionTreeLength, numOffspringRange, numOffspringMedian, lengthOfPregnancy;
+			bool carnivore;
+			float maxMass, mass, energyThreshold, growthRate;
+
+			iss >> decisionTreeLength;
+			decisionTree = new int[decisionTreeLength];
+			for (int i = 0; i < decisionTreeLength; i++) {
+				iss >> decisionTree[i];
+			}
+			if (!(iss >> carnivore >> maxMass >> energyThreshold >> growthRate >> numOffspringRange
+				>> numOffspringMedian >> lengthOfPregnancy)) {
+				//indicates an error here, not sure how to deal with it
+				cout << "sstream input error" << endl;
+			}
+			mass = 0.5f * maxMass;
+
+			Creature* creatureFromFile = creatureList->getPoolCreature();
+
+			creatureFromFile->setCreatureAttributes(decisionTree, decisionTreeLength, carnivore, maxMass, mass, 0.0f,
+				energyThreshold, growthRate, numOffspringRange, numOffspringMedian, lengthOfPregnancy);
+			int x, y;
+			do {
+				x = 1 + xor128() % (width - 1);
+				y = 1 + xor128() % (height - 1);
+			} while (!creatureMap->addCreature(creatureFromFile, x, y));
+			creatureFromFile->born(x, y);
+		}
+		inputFile.close();
+		cout << "Creatures successfully loaded from: " << filename << endl;
+	}
+	else {
+		cout << "Error - input file could not be opened. Creatures not loaded." << endl;
 	}
 }
 
@@ -302,27 +321,42 @@ void Game::GameInit(){
 	}
 }
 
-void toggleShowMenu(tgui::Gui& gui) {
-
+void Game::toggleShowMenu(tgui::Gui& gui, tgui::Tab::Ptr tabs, int buttonPos) {
+	sf::View currentView = _mainWindow.getView();
 	if (gui.get("tabs")->isVisible()) {
 		gui.get("tabs")->hide();
 		gui.get("controlPanel")->hide();
 		gui.get("infoPanel")->hide();
 		gui.get("menuButton")->setPosition(0, 0);
+		currentView.setViewport(sf::FloatRect(0.5, 0, 0.5f, 0.5f));
 	}
 	else {
 		gui.get("tabs")->show();
-		gui.get("controlPanel")->show();
-		gui.get("infoPanel")->hide();
-		gui.get("menuButton")->setPosition(254, 0);
+		/*if (tabs->getSelected() == "Controls") {
+			gui.get("controlPanel")->show();
+			gui.get("infoPanel")->hide();
+		}
+		else {
+			gui.get("controlPanel")->hide();
+			gui.get("infoPanel")->show();
+		}*/
+		gui.get("menuButton")->setPosition(buttonPos, 0);
+		currentView.setViewport(sf::FloatRect(0.726, 0, 0.5f, 0.5f));
 	}
 }
-void startStopSimulation() {
 
+void Game::startStopSimulation(tgui::Button::Ptr startStopButton) {
+	if (_gameState == Game::Paused) {
+		_gameState = Game::Running;
+		startStopButton->setText("Stop");
+	}
+	else {
+		_gameState = Game::Paused;
+		startStopButton->setText("Start");
+	}
 }
 
-void onTabSelected(tgui::Gui& gui, std::string selectedTab)
-{
+void onTabSelected(tgui::Gui& gui, std::string selectedTab){
 	// Show the correct panel
 	if (selectedTab == "Controls")
 	{
@@ -335,22 +369,26 @@ void onTabSelected(tgui::Gui& gui, std::string selectedTab)
 		gui.get("infoPanel")->show();
 	}
 }
-void Game::GUISetup() {
-	int panelWidth = 250;
-	int panelHeight = 1000;
-	int statsHeight = 250;
-	int textWidth = 300;
 
-	auto menuButton = tgui::Button::create();
-	menuButton->setPosition(0, 0);
-	menuButton->setSize(25, 25);
-	gui.add(menuButton, "menuButton");
-	
+void Game::GUISetup() {
+	int panelWidth = 274;
+	int panelHeight = 1000;
+
+	gui.setFont("fonts/consolas.ttf");
+
 	tgui::Tab::Ptr tabs = tgui::Tab::create();
 	tabs->add("Controls");
 	tabs->add("Creature Info");
 	tabs->setPosition(0, 0);
 	gui.add(tabs, "tabs");
+	// Enable callback when another tab is selected (pass reference to the gui as first parameter)
+	tabs->connect("TabSelected", onTabSelected, std::ref(gui));
+
+	auto menuButton = tgui::Button::create();
+	menuButton->setPosition(0, 0);
+	menuButton->setSize(25, 25);
+	gui.add(menuButton, "menuButton");
+	menuButton->connect("pressed", toggleShowMenu, std::ref(gui), tabs, panelWidth + 2);
 
 	// Create the first panel
 	tgui::Panel::Ptr panel1 = tgui::Panel::create();
@@ -389,50 +427,55 @@ void Game::GUISetup() {
 	*/
 
 	//Start stop button
-	auto startStop = tgui::Button::create();
-	startStop->setPosition(100, 100);
-	startStop->setSize(80, 80);
-	startStop->setText("Start");
-	panel1->add(startStop, "startStop");
-	startStop->connect("pressed", toggleShowMenu, std::ref(gui));
+	auto startStopButton = tgui::Button::create();
+	startStopButton->setPosition(100, 100);
+	startStopButton->setSize(80, 80);
+	startStopButton->setText("Start");
+	panel1->add(startStopButton, "startStopButton");
+	startStopButton->connect("pressed", startStopSimulation, startStopButton);
 	
 	//Save button, file path and file name
-	auto save = tgui::Button::create();
-	save->setPosition(10, 200);
-	save->setSize(80, 80);
-	save->setText("    Save\nCreatures");
-	panel1->add(save, "save");
+	auto saveButton = tgui::Button::create();
+	saveButton->setPosition(10, 200);
+	saveButton->setSize(80, 80);
+	saveButton->setText("   Save\nCreatures");
+	panel1->add(saveButton, "saveButton");
 	tgui::TextBox::Ptr savePath = tgui::TextBox::create();
 	savePath->setPosition(100, 200);
 	savePath->setSize(140, 40);
 	savePath->setText("/path/to/file");
 	panel1->add(savePath, "savePath");
+	savePath->connect("Focused Unfocused", [&]() { enableKeyPresses = !enableKeyPresses; });
 	tgui::TextBox::Ptr saveName = tgui::TextBox::create();
 	saveName->setPosition(100, 240);
 	saveName->setSize(140, 40);
 	saveName->setText("fileName.txt");
 	panel1->add(saveName, "saveName");
+	saveName->connect("Focused Unfocused", [&]() { enableKeyPresses = !enableKeyPresses; });
 
 	//load button, file path and file name
-	auto load = tgui::Button::create();
-	load->setPosition(10, 300);
-	load->setSize(80, 80);
-	load->setText("    Load\nCreatures");
-	panel1->add(load, "load");
+	auto loadButton = tgui::Button::create();
+	loadButton->setPosition(10, 300);
+	loadButton->setSize(80, 80);
+	loadButton->setText("   Load\nCreatures");
+	panel1->add(loadButton, "loadButton");
 	tgui::TextBox::Ptr loadPath = tgui::TextBox::create();
 	loadPath->setPosition(100, 300);
 	loadPath->setSize(140, 40);
 	loadPath->setText("/path/to/file");
 	panel1->add(loadPath, "loadPath");
+	loadPath->connect("Focused Unfocused", [&]() { enableKeyPresses = !enableKeyPresses; });
 	tgui::TextBox::Ptr loadName = tgui::TextBox::create();
 	loadName->setPosition(100, 340);
 	loadName->setSize(140, 40);
 	loadName->setText("fileName.txt");
 	panel1->add(loadName, "loadName");
+	loadName->connect("Focused Unfocused", [&]() { enableKeyPresses = !enableKeyPresses; });
+	loadButton->connect("pressed", loadCreatures, loadPath, loadName);
 
 	//speed up slow down slider
 	tgui::Label::Ptr speedSliderLabel = tgui::Label::create();
-	speedSliderLabel->setPosition(60, 400);
+	speedSliderLabel->setPosition(70, 400);
 	speedSliderLabel->setText("Speed Slider");
 	panel1->add(speedSliderLabel, "speedSliderLabel");
 	tgui::Slider::Ptr speedSlider = tgui::Slider::create();
@@ -440,7 +483,9 @@ void Game::GUISetup() {
 	speedSlider->setSize(210, 15);
 	speedSlider->setMinimum(1);
 	speedSlider->setMaximum(25);
+	speedSlider->setValue(25);
 	panel1->add(speedSlider, "speedSlider");
+	speedSlider->connect("ValueChanged", [&](int value) { speedFactor = value; });
 
 	//zoom slider
 	tgui::Label::Ptr zoomSliderLabel = tgui::Label::create();
@@ -454,29 +499,26 @@ void Game::GUISetup() {
 	zoomSlider->setMaximum(10);
 	panel1->add(zoomSlider, "zoomSlider");
 
-	string statsText = "Update Times \n"
-		"Resources: 0 \n"
-		"Creatures: 0 \n"
-		"Pool size: 0 \n\n\n"
-		"Species: \n"
-		"Number of Creatures:\n"
-		"Age of oldest:\n"
-		"Highest generation: \n"
-		"Lowest generation:\n"
-		"Average mass:\n"
-		"Percentage herbivores:\n"
-		"Average tree length:\n"
-		"Average energy: \n"
-		"Decisions b\\ actions: ";
+	string statsText = "Update Times "
+		"\nResources:     0"
+		"\nCreatures:     0"
+		"\nPool size:     0" 
+		"\nTotal Ticks:   0"
+		"\n\n\nSpecies: "
+		"\nNum of Creatures: 0"
+		"\nAge of oldest:    0"
+		"\nHighest gen:      0" 
+		"\nLowest gen:       0" 
+		"\nAverage mass:     0" 
+		"\n% herbivores:     0" 
+		"\nAv tree length:   0" 
+		"\nAv energy:        0" 
+		"\nDecs b\\ actions:  0" ;
 	tgui::Label::Ptr mainStats = tgui::Label::create();
 	mainStats->setPosition(10, 10);
 	mainStats->setText(statsText);
+	displayedStats = mainStats;
 	panel2->add(mainStats, "mainStats");
-
-	// Enable callback when another tab is selected (pass reference to the gui as first parameter)
-	tabs->connect("TabSelected", onTabSelected, std::ref(gui));
-
-	menuButton->connect("pressed", toggleShowMenu, std::ref(gui));
 
 	// Select the first tab and only show the first panel
 	tabs->select("Controls");

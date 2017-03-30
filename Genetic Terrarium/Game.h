@@ -1,5 +1,7 @@
 #ifndef GAME_H
 #define GAME_h
+
+#include <string>
 #include "SFML/Window.hpp"
 #include "SFML/Graphics.hpp"
 #include "TGUI/TGUI.hpp"
@@ -14,15 +16,22 @@ public:
 	static void Start(int screenX, int screenY);
 private:
 	static bool isExiting();
-	static void GameLoop();
+	static void GameLoop(clock_t &speedLimiter, clock_t &statTimer);
 	static void GameInit();
 	static void GUISetup();
+	static void updateGUIStats(); 
+	static void toggleShowMenu(tgui::Gui& gui, tgui::Tab::Ptr tabs, int buttonPos);
+	static void saveCreatures(tgui::TextBox::Ptr path, tgui::TextBox::Ptr filename);
+	static void loadCreatures(tgui::TextBox::Ptr path, tgui::TextBox::Ptr filename);
+
+	static void startStopSimulation(tgui::Button::Ptr startStopButton);
 
 	enum GameState { Uninitialized, ShowingSplash, Paused,
 		ShowingMenu, Running, Exiting };
 
 	static GameState _gameState;
 	static sf::RenderWindow _mainWindow;
+	static sf::View _view;
 	static tgui::Gui gui;
 	static sf::Texture texture;
 	static sf::Sprite sprite;
@@ -34,6 +43,9 @@ private:
 	static CreatureMap* creatureMap;
 	static CreatureList* creatureList;
 	static int loopCount;
+	static bool enableKeyPresses;
+	static int speedFactor;
+	static tgui::Label::Ptr displayedStats;
 };
 
 #endif

@@ -17,6 +17,8 @@ public:
 	float getAverageTreeLength() { return averageTreeLength; };
 	float getAverageEnergy() { return averageEnergy; };
 	float getAverageDecisionsBeforeActions() { return averageDecisionsBeforeActions; };
+	int getAgeOfOldest() { return ageOfOldest; };
+	int getAverageAge() { return averageAge; };
 	void collectCreatureStats(void) { collectStats = true; };
 
 private:
@@ -40,6 +42,10 @@ private:
 	float averageTreeLength;
 	float averageEnergy;
 	float averageDecisionsBeforeActions;
+	int ageOfOldest;
+	int averageAge;
+	int highestGen;
+	int lowestGen;
 };
 
 #endif

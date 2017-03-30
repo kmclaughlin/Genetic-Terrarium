@@ -16,7 +16,7 @@ public:
 	static void Start(int screenX, int screenY);
 private:
 	static bool isExiting();
-	static void GameLoop(clock_t &speedLimiter, clock_t &statTimer);
+	static void GameLoop();
 	static void GameInit();
 	static void GUISetup();
 	static void updateGUIStats(); 
@@ -42,10 +42,16 @@ private:
 	static ResourceMap* resourceMap;
 	static CreatureMap* creatureMap;
 	static CreatureList* creatureList;
-	static int loopCount;
+	static int ticksCount;
 	static bool enableKeyPresses;
 	static int speedFactor;
 	static tgui::Label::Ptr displayedStats;
+	static clock_t runSpeedLimiter;
+	static clock_t statTimer;
+	static int mouseX;
+	static int mouseY;
+	static Creature* selectedSpecies;
+	static bool selectSpecies;
 };
 
 #endif

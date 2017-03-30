@@ -15,9 +15,16 @@ int Game::height = NULL;
 ResourceMap* Game::resourceMap = NULL;
 CreatureMap* Game::creatureMap = NULL;
 CreatureList* Game::creatureList = NULL;
+int Game::ticksCount = 0;
 bool Game::enableKeyPresses = true;
 int Game::speedFactor = 25;
 tgui::Label::Ptr Game::displayedStats = NULL;
+clock_t Game::runSpeedLimiter;
+clock_t Game::statTimer;
+int Game::mouseX = -1;
+int Game::mouseY = -1;
+Creature* Game::selectedSpecies = NULL;
+bool Game::selectSpecies = false;
 
 void Game::Start(int screenX, int screenY){
 	/*start() should only be run once when the program is launched, therefore we
@@ -43,11 +50,11 @@ void Game::Start(int screenX, int screenY){
 	GameInit();
 	GUISetup();
 
-	clock_t runSpeedLimiter = clock();
-	clock_t statTimer = clock();
+	runSpeedLimiter = clock();
+	statTimer = clock();
 	while (!isExiting())
 	{
-		GameLoop(runSpeedLimiter, statTimer);
+		GameLoop();
 	}
 
 	_mainWindow.close();
@@ -60,34 +67,16 @@ bool Game::isExiting(){
 		return false;
 }
 
-void Game::GameLoop(clock_t &runSpeedLimiter, clock_t &statTimer){
+void Game::GameLoop(){
 	sf::Event currentEvent;
 	clock_t startTime1 = clock();
 	clock_t startTime2 = clock();
 	
 	//update the game state
 	if (_gameState == Game::Running && clock() - runSpeedLimiter  > 20*(25 - speedFactor)) {
+		ticksCount++;
 		runSpeedLimiter = clock();
-		for (int y = 0; y < height; y++)
-		{
-			for (int x = 0; x < width; x++)
-			{
-				if (creatureMap->getCell(x, y) == NULL) {
-					pixels[(y * width + x) * 4] = 0; // R
-					pixels[(y * width + x) * 4 + 1] = resourceMap->getCell(x, y) * 255 / resourceMap->getMaxEnergy(); // G
-					pixels[(y * width + x) * 4 + 2] = 0; // B
-					pixels[(y * width + x) * 4 + 3] = 255; // A
-				}
-				else { //if (creatureMap->getCell(x, y) != NULL) {
-					pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0]; // R
-					pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1]; // G
-					pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
-					pixels[(y * width + x) * 4 + 3] = 255; // A
-				}
-			}
-		}
 
-		texture.update(pixels);
 		startTime1 = clock();
 		resourceMap->update();
 		startTime2 = clock();
@@ -97,15 +86,16 @@ void Game::GameLoop(clock_t &runSpeedLimiter, clock_t &statTimer){
 			string statsText = "Update Times "
 				"\nResources:     " + to_string(startTime2 - startTime1) +
 				"\nCreatures:     " + to_string(clock() - startTime2) +
-				"\nPool size:     " + to_string(creatureList->getNumOfActiveCreatures()) +
-				"\nTotal Ticks:   " + to_string(0) +
+				"\nPool size:     " + to_string(creatureList->getLengthOfList()) +
+				"\nTotal Ticks:   " + to_string(ticksCount) +
 				"\n\n\nSpecies: "
 				"\nNum of Creatures: " + to_string(creatureList->getNumOfActiveCreatures()) +
-				"\nAge of oldest:    " + to_string(0) +
+				"\nAge of oldest:    " + to_string(creatureList->getAgeOfOldest()) +
+				"\nAverage age:      " + to_string(creatureList->getAverageAge()) +
 				"\nHighest gen:      " + to_string(0) +
 				"\nLowest gen:       " + to_string(0) +
 				"\nAverage mass:     " + to_string((int)creatureList->getAverageMass()) +
-				"\n% herbivores:     " + to_string(0) +
+				"\n% herbivores:     " + to_string(100) +
 				"\nAv tree length:   " + to_string((int)creatureList->getAverageTreeLength()) +
 				"\nAv energy:        " + to_string((int)creatureList->getAverageEnergy()) +
 				"\nDecs b\\ actions:  " + to_string((int)creatureList->getAverageDecisionsBeforeActions());
@@ -114,7 +104,49 @@ void Game::GameLoop(clock_t &runSpeedLimiter, clock_t &statTimer){
 			statTimer = clock();
 		}
 		cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
+		//Update the screen
+		for (int y = 0; y < height; y++)
+		{
+			for (int x = 0; x < width; x++)
+			{
+				if (creatureMap->getCell(x, y) == NULL) {
+					pixels[(y * width + x) * 4] = 0; // R
+					pixels[(y * width + x) * 4 + 1] = resourceMap->getCell(x, y) * 255 / resourceMap->getMaxEnergy(); // G
+					pixels[(y * width + x) * 4 + 2] = 0; // B
+					if (selectedSpecies == NULL) {
+						pixels[(y * width + x) * 4 + 3] = 255; // A
+					}
+					else {
+						pixels[(y * width + x) * 4 + 3] = 125; // A
+					}
+				}
+				else { //if (creatureMap->getCell(x, y) != NULL) {
+					if (selectedSpecies == NULL) {
+						pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0]; // R
+						pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1]; // G
+						pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
+						pixels[(y * width + x) * 4 + 3] = 255; // A
+					}
+					else if (creatureMap->getCell(x, y)->isSameSpecies(selectedSpecies)) {
+						if (!selectedSpecies->isAlive()) selectedSpecies = NULL;
+						pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0] + 255; // R
+						pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1] + 50; // G
+						pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
+						pixels[(y * width + x) * 4 + 3] = 255; // A
+					}
+					else {
+						if (!selectedSpecies->isAlive()) selectedSpecies = NULL;
+						pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0]; // R
+						pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1]; // G
+						pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
+						pixels[(y * width + x) * 4 + 3] = 125; // A
+					}
+				}
+			}
+		}
+		texture.update(pixels);
 	}
+
 	_mainWindow.clear();
 	_mainWindow.draw(sprite);
 	gui.draw(); // Draw all widgets
@@ -139,6 +171,52 @@ void Game::GameLoop(clock_t &runSpeedLimiter, clock_t &statTimer){
 		if (currentEvent.type == sf::Event::Closed)
 		{
 			_gameState = Game::Exiting;
+		}
+		// catch the resize events
+		else if (currentEvent.type == sf::Event::Resized)
+		{
+			// update the view to the new size of the window
+			_view.setSize(sf::Vector2f(currentEvent.size.width, currentEvent.size.height)); //currentEvent.size.width * height / width));// 
+			_mainWindow.setView(_view);
+		}
+		else if (currentEvent.type == sf::Event::MouseWheelScrolled) {
+			double aspectRatio = _view.getSize().y / _view.getSize().x;
+			double newX = _view.getSize().x - 0.1 * currentEvent.mouseWheelScroll.delta * width;
+			double newY = newX * aspectRatio;
+			if (newX > 5 && newY > 5 && newX <= 2*_mainWindow.getSize().x && newY <= 2*_mainWindow.getSize().y) {
+				_view.setSize(newX, newY);
+				_mainWindow.setView(_view);
+			}
+		}
+		else if (currentEvent.type == sf::Event::MouseButtonPressed) {
+			if (selectSpecies) {
+				//mouse click will give from top left of screen
+				// center of view is coordinates of map at screen center
+				//need to switch to view coordinates and adjust for center
+				int mapX = (float)(currentEvent.mouseButton.x - ((float)_mainWindow.getSize().x / 2.0f)) * (float)_view.getSize().x / (float)_mainWindow.getSize().x + (float)_view.getCenter().x;
+				int mapY = (float)(currentEvent.mouseButton.y - ((float)_mainWindow.getSize().y / 2.0f))  * (float)_view.getSize().y / (float)_mainWindow.getSize().y + (float)_view.getCenter().y;
+				cout << "x: " << mapX << endl
+					<< "y: " << mapY << endl;
+				selectedSpecies = creatureMap->getCell(mapX, mapY);
+				cout << selectedSpecies << endl;
+				selectSpecies = false;
+			}
+			else {
+				mouseX = currentEvent.mouseButton.x;
+				mouseY = currentEvent.mouseButton.y;
+			}
+		}
+		else if (currentEvent.type == sf::Event::MouseButtonReleased) {
+			mouseX = -1;
+			mouseY = -1;
+		}
+		if (currentEvent.type == sf::Event::MouseMoved && mouseX >= 0) {
+			double newX = _view.getCenter().x + (mouseX - currentEvent.mouseMove.x) * _view.getSize().x / _mainWindow.getSize().x;
+			double newY = _view.getCenter().y + (mouseY - currentEvent.mouseMove.y) * _view.getSize().y / _mainWindow.getSize().y;
+			mouseX = currentEvent.mouseMove.x;
+			mouseY = currentEvent.mouseMove.y;
+			_view.setCenter(newX, newY);
+			_mainWindow.setView(_view);
 		}
 
 		gui.handleEvent(currentEvent); // Pass the event to the widgets
@@ -328,20 +406,22 @@ void Game::toggleShowMenu(tgui::Gui& gui, tgui::Tab::Ptr tabs, int buttonPos) {
 		gui.get("controlPanel")->hide();
 		gui.get("infoPanel")->hide();
 		gui.get("menuButton")->setPosition(0, 0);
-		currentView.setViewport(sf::FloatRect(0.5, 0, 0.5f, 0.5f));
+		_view.setCenter(sf::Vector2f(_view.getCenter().x + _view.getSize().x * 0.137, _view.getCenter().y));
+		_mainWindow.setView(_view);
 	}
 	else {
 		gui.get("tabs")->show();
-		/*if (tabs->getSelected() == "Controls") {
+		if (tabs->getSelected() == "Controls") {
 			gui.get("controlPanel")->show();
 			gui.get("infoPanel")->hide();
 		}
 		else {
 			gui.get("controlPanel")->hide();
 			gui.get("infoPanel")->show();
-		}*/
+		}
 		gui.get("menuButton")->setPosition(buttonPos, 0);
-		currentView.setViewport(sf::FloatRect(0.726, 0, 0.5f, 0.5f));
+		_view.setCenter(sf::Vector2f(_view.getCenter().x - _view.getSize().x * 0.137, _view.getCenter().y));
+		_mainWindow.setView(_view);
 	}
 }
 
@@ -409,7 +489,7 @@ void Game::GUISetup() {
 	speed up slow down slider
 	zoom slider
 	button to show decision tree in new window
-	track creature?? have clicked creature leave a trail
+	track creature?? have clicked creature leave a trail or center screen on creature and follow
 
 	stats
 	update times creatures and resources
@@ -426,6 +506,7 @@ void Game::GUISetup() {
 	decisions before actions: 
 	*/
 
+	//Controls panel widgets
 	//Start stop button
 	auto startStopButton = tgui::Button::create();
 	startStopButton->setPosition(100, 100);
@@ -499,6 +580,16 @@ void Game::GUISetup() {
 	zoomSlider->setMaximum(10);
 	panel1->add(zoomSlider, "zoomSlider");
 
+	//Select Species button
+	auto selectSpeciesButton = tgui::Button::create();
+	selectSpeciesButton->setPosition(80, 600);
+	selectSpeciesButton->setSize(120, 80);
+	selectSpeciesButton->setText("Select Species");
+	panel1->add(selectSpeciesButton, "selectSpeciesButton");
+	selectSpeciesButton->connect("pressed", [&]() { selectSpecies = true; });
+
+
+	//Creature info Panel widgets
 	string statsText = "Update Times "
 		"\nResources:     0"
 		"\nCreatures:     0"
@@ -507,6 +598,7 @@ void Game::GUISetup() {
 		"\n\n\nSpecies: "
 		"\nNum of Creatures: 0"
 		"\nAge of oldest:    0"
+		"\nAverage age:      0"
 		"\nHighest gen:      0" 
 		"\nLowest gen:       0" 
 		"\nAverage mass:     0" 

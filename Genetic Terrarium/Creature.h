@@ -39,6 +39,8 @@ public:
 	int getLengthOfPregnancy() { return lengthOfPregnancy; };
 	int* getCreatureID() { return creatureID; };
 	int getDecisionsBeforeAction() { return decisionsBeforeAction; };
+	int getAge() { return age; };
+	bool isSameSpecies(Creature* creatureToCheck);
 
 	static ResourceMap* resourceMap;
 	static CreatureMap* creatureMap;

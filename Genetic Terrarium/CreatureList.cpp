@@ -92,11 +92,13 @@ void CreatureList::returnCreatureToPool(node* creatureNodeToReturn) {
 //cycle through the entire list and update all the creatures
 void CreatureList::update(){
 	//used to collect stats of creatures in the list
-	numOfActiveCreatures = 0;
+	int tempNumOfActiveCreatures = 0;
 	float totalMass = 0;
 	float totalTreeLength = 0;
 	float totalDecisionsMade = 0;
 	float totalEnergy = 0;
+	int highestAge = 0;
+	int totalAge = 0;
 	//activeNode points to the first available pool creature, the next is the first active creature
 	node* current = NULL;
 	if (aliveNode != NULL) {
@@ -112,11 +114,15 @@ void CreatureList::update(){
 			//creature.update() returns true unless the creature died, in which case it must be moved to the pool
 			if (current->creature->update()) {
 				if (collectStats) {
-					numOfActiveCreatures++;
+					tempNumOfActiveCreatures++;
 					totalMass += current->creature->getMaxMass();
 					totalTreeLength += current->creature->getDecisionTreeLength();
 					totalDecisionsMade += current->creature->getDecisionsBeforeAction();
 					totalEnergy += current->creature->getEnergy();
+					totalAge += current->creature->getAge();
+					if (current->creature->getAge() > highestAge) {
+						highestAge = current->creature->getAge();
+					}
 				}
 			}
 			else {
@@ -128,11 +134,14 @@ void CreatureList::update(){
 		}
 		current = temp;
 	}
-	if (collectStats) {
+	if (collectStats && numOfActiveCreatures > 0) {
 		averageMass = totalMass / numOfActiveCreatures;
 		averageTreeLength = totalTreeLength / numOfActiveCreatures;
 		averageEnergy = totalEnergy / numOfActiveCreatures;
 		averageDecisionsBeforeActions = totalDecisionsMade / numOfActiveCreatures;
+		numOfActiveCreatures = tempNumOfActiveCreatures;
+		ageOfOldest = highestAge;
+		averageAge = totalAge / numOfActiveCreatures;
 		collectStats = false;
 	}
 }

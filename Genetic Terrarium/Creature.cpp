@@ -1097,3 +1097,25 @@ void Creature::replicate() {
 	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, babyCarnivore, babyMaxMass, babyMass, babyEnergy, babyEnergyThreshold, babyGrowthRate,
 		babyNumOffspringRange, babyNumOffspringMedian, babyLengthOfPregnancy);
 }
+
+bool Creature::isSameSpecies(Creature* creatureToCheck) {
+	//check if the other creature falls within the bounds of what is considered to be the same species
+	//TODO possibly add more here?
+	float speciesVar = 0.03;
+	if (creatureToCheck->isCarnivore() != carnivore) {
+		return false;
+	}
+	else if (creatureToCheck->getMaxMass() > maxMass * (1.0f + speciesVar) || creatureToCheck->getMaxMass() < maxMass * (1.0f - speciesVar)) {
+		return false;
+	}
+	else if (creatureToCheck->getEnergyThreshold() > energyThreshold * (1.0f + speciesVar) || creatureToCheck->getEnergyThreshold() < energyThreshold * (1.0f - speciesVar)) {
+		return false;
+	}
+	else if (creatureToCheck->getGrowthRate() > growthRate * (1.0f + speciesVar) || creatureToCheck->getGrowthRate() < growthRate * (1.0f - speciesVar)) {
+		return false;
+	}
+	else if (creatureToCheck->getMaxMass() > maxMass * (1.0f + speciesVar) || creatureToCheck->getMaxMass() < maxMass * (1.0f - speciesVar)) {
+		return false;
+	}
+	return true;
+}

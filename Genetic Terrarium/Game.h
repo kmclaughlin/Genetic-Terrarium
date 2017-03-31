@@ -23,6 +23,7 @@ private:
 	static void toggleShowMenu(tgui::Gui& gui, tgui::Tab::Ptr tabs, int buttonPos);
 	static void saveCreatures(tgui::TextBox::Ptr path, tgui::TextBox::Ptr filename);
 	static void loadCreatures(tgui::TextBox::Ptr path, tgui::TextBox::Ptr filename);
+	static void zoomView(int numOfTicks);
 
 	static void startStopSimulation(tgui::Button::Ptr startStopButton);
 
@@ -43,7 +44,7 @@ private:
 	static CreatureMap* creatureMap;
 	static CreatureList* creatureList;
 	static int ticksCount;
-	static bool enableKeyPresses;
+	static bool enableScreenInteraction;
 	static int speedFactor;
 	static tgui::Label::Ptr displayedStats;
 	static clock_t runSpeedLimiter;

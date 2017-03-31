@@ -134,7 +134,8 @@ void CreatureList::update(){
 		}
 		current = temp;
 	}
-	if (collectStats && numOfActiveCreatures > 0) {
+	if (collectStats && tempNumOfActiveCreatures > 0) {
+		numOfActiveCreatures = tempNumOfActiveCreatures;
 		averageMass = totalMass / numOfActiveCreatures;
 		averageTreeLength = totalTreeLength / numOfActiveCreatures;
 		averageEnergy = totalEnergy / numOfActiveCreatures;

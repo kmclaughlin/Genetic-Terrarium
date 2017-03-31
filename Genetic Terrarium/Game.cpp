@@ -16,7 +16,7 @@ ResourceMap* Game::resourceMap = NULL;
 CreatureMap* Game::creatureMap = NULL;
 CreatureList* Game::creatureList = NULL;
 int Game::ticksCount = 0;
-bool Game::enableKeyPresses = true;
+bool Game::enableScreenInteraction = true;
 int Game::speedFactor = 25;
 tgui::Label::Ptr Game::displayedStats = NULL;
 clock_t Game::runSpeedLimiter;
@@ -155,14 +155,14 @@ void Game::GameLoop(){
 	while (_mainWindow.pollEvent(currentEvent)){
 		switch (_gameState){
 			case Game::Running:
-				if (currentEvent.KeyReleased == currentEvent.type && enableKeyPresses){
+				if (currentEvent.type == sf::Event::KeyReleased && enableScreenInteraction){
 					if (currentEvent.key.code == 'r' - 'a') {
 						_gameState = Game::Paused;
 					}
 				}
 				break;
 			case Game::Paused:
-				if (currentEvent.KeyReleased == currentEvent.type && enableKeyPresses) {
+				if (currentEvent.type == sf::Event::KeyReleased && enableScreenInteraction) {
 					if (currentEvent.key.code == 'r' - 'a') {
 						_gameState = Game::Running;
 					}
@@ -172,6 +172,16 @@ void Game::GameLoop(){
 		{
 			_gameState = Game::Exiting;
 		}
+		else if (currentEvent.type == sf::Event::KeyPressed && enableScreenInteraction) {
+			//key.code 56 is '-'
+			if (currentEvent.key.code == 56) {
+				zoomView(-1);
+			}
+			//key.code 55 is '+'
+			else if (currentEvent.key.code == 55) {
+				zoomView(1);
+			}
+		}
 		// catch the resize events
 		else if (currentEvent.type == sf::Event::Resized)
 		{
@@ -180,13 +190,7 @@ void Game::GameLoop(){
 			_mainWindow.setView(_view);
 		}
 		else if (currentEvent.type == sf::Event::MouseWheelScrolled) {
-			double aspectRatio = _view.getSize().y / _view.getSize().x;
-			double newX = _view.getSize().x - 0.1 * currentEvent.mouseWheelScroll.delta * width;
-			double newY = newX * aspectRatio;
-			if (newX > 5 && newY > 5 && newX <= 2*_mainWindow.getSize().x && newY <= 2*_mainWindow.getSize().y) {
-				_view.setSize(newX, newY);
-				_mainWindow.setView(_view);
-			}
+			zoomView(currentEvent.mouseWheelScroll.delta);
 		}
 		else if (currentEvent.type == sf::Event::MouseButtonPressed) {
 			if (selectSpecies) {
@@ -195,10 +199,7 @@ void Game::GameLoop(){
 				//need to switch to view coordinates and adjust for center
 				int mapX = (float)(currentEvent.mouseButton.x - ((float)_mainWindow.getSize().x / 2.0f)) * (float)_view.getSize().x / (float)_mainWindow.getSize().x + (float)_view.getCenter().x;
 				int mapY = (float)(currentEvent.mouseButton.y - ((float)_mainWindow.getSize().y / 2.0f))  * (float)_view.getSize().y / (float)_mainWindow.getSize().y + (float)_view.getCenter().y;
-				cout << "x: " << mapX << endl
-					<< "y: " << mapY << endl;
 				selectedSpecies = creatureMap->getCell(mapX, mapY);
-				cout << selectedSpecies << endl;
 				selectSpecies = false;
 			}
 			else {
@@ -210,7 +211,7 @@ void Game::GameLoop(){
 			mouseX = -1;
 			mouseY = -1;
 		}
-		if (currentEvent.type == sf::Event::MouseMoved && mouseX >= 0) {
+		if (currentEvent.type == sf::Event::MouseMoved && mouseX >= 0 && enableScreenInteraction) {
 			double newX = _view.getCenter().x + (mouseX - currentEvent.mouseMove.x) * _view.getSize().x / _mainWindow.getSize().x;
 			double newY = _view.getCenter().y + (mouseY - currentEvent.mouseMove.y) * _view.getSize().y / _mainWindow.getSize().y;
 			mouseX = currentEvent.mouseMove.x;
@@ -302,6 +303,16 @@ void Game::loadCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr file
 	}
 	else {
 		cout << "Error - input file could not be opened. Creatures not loaded." << endl;
+	}
+}
+
+void Game::zoomView(int numOfTicks) {
+	double aspectRatio = _view.getSize().y / _view.getSize().x;
+	double newX = _view.getSize().x - 0.1 * numOfTicks * width;
+	double newY = newX * aspectRatio;
+	if (newX > 5 && newY > 5 && newX <= 2 * _mainWindow.getSize().x && newY <= 2 * _mainWindow.getSize().y) {
+		_view.setSize(newX, newY);
+		_mainWindow.setView(_view);
 	}
 }
 
@@ -526,13 +537,13 @@ void Game::GUISetup() {
 	savePath->setSize(140, 40);
 	savePath->setText("/path/to/file");
 	panel1->add(savePath, "savePath");
-	savePath->connect("Focused Unfocused", [&]() { enableKeyPresses = !enableKeyPresses; });
+	savePath->connect("Focused Unfocused", [&]() { enableScreenInteraction = !enableScreenInteraction; });
 	tgui::TextBox::Ptr saveName = tgui::TextBox::create();
 	saveName->setPosition(100, 240);
 	saveName->setSize(140, 40);
 	saveName->setText("fileName.txt");
 	panel1->add(saveName, "saveName");
-	saveName->connect("Focused Unfocused", [&]() { enableKeyPresses = !enableKeyPresses; });
+	saveName->connect("Focused Unfocused", [&]() { enableScreenInteraction = !enableScreenInteraction; });
 
 	//load button, file path and file name
 	auto loadButton = tgui::Button::create();
@@ -545,13 +556,13 @@ void Game::GUISetup() {
 	loadPath->setSize(140, 40);
 	loadPath->setText("/path/to/file");
 	panel1->add(loadPath, "loadPath");
-	loadPath->connect("Focused Unfocused", [&]() { enableKeyPresses = !enableKeyPresses; });
+	loadPath->connect("Focused Unfocused", [&]() { enableScreenInteraction = !enableScreenInteraction; });
 	tgui::TextBox::Ptr loadName = tgui::TextBox::create();
 	loadName->setPosition(100, 340);
 	loadName->setSize(140, 40);
 	loadName->setText("fileName.txt");
 	panel1->add(loadName, "loadName");
-	loadName->connect("Focused Unfocused", [&]() { enableKeyPresses = !enableKeyPresses; });
+	loadName->connect("Focused Unfocused", [&]() { enableScreenInteraction = !enableScreenInteraction; });
 	loadButton->connect("pressed", loadCreatures, loadPath, loadName);
 
 	//speed up slow down slider
@@ -566,10 +577,13 @@ void Game::GUISetup() {
 	speedSlider->setMaximum(25);
 	speedSlider->setValue(25);
 	panel1->add(speedSlider, "speedSlider");
+	//speedSlider->connect("Focused Unfocused", [&](tgui::Slider::Ptr slider) { speedFactor = slider->getValue(); enableScreenInteraction = !enableScreenInteraction; }, speedSlider);
 	speedSlider->connect("ValueChanged", [&](int value) { speedFactor = value; });
+	speedSlider->connect("MouseEntered  MouseLeft", [&](tgui::Slider::Ptr slider) { if(slider->isFocused()) enableScreenInteraction = !enableScreenInteraction; }, speedSlider);
+	// Focused Unfocused enableScreenInteraction = !enableScreenInteraction;
 
 	//zoom slider
-	tgui::Label::Ptr zoomSliderLabel = tgui::Label::create();
+	/*tgui::Label::Ptr zoomSliderLabel = tgui::Label::create();
 	zoomSliderLabel->setPosition(100, 500);
 	zoomSliderLabel->setText("Zoom");
 	panel1->add(zoomSliderLabel, "zoomSliderLabel");
@@ -579,10 +593,11 @@ void Game::GUISetup() {
 	zoomSlider->setMinimum(0);
 	zoomSlider->setMaximum(10);
 	panel1->add(zoomSlider, "zoomSlider");
+	zoomSlider->connect("Focused Unfocused", [&]() { enableScreenInteraction = !enableScreenInteraction; });*/
 
 	//Select Species button
 	auto selectSpeciesButton = tgui::Button::create();
-	selectSpeciesButton->setPosition(80, 600);
+	selectSpeciesButton->setPosition(80, 500);
 	selectSpeciesButton->setSize(120, 80);
 	selectSpeciesButton->setText("Select Species");
 	panel1->add(selectSpeciesButton, "selectSpeciesButton");

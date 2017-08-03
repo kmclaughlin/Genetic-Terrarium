@@ -23,6 +23,7 @@ private:
 	static void toggleShowMenu(tgui::Gui& gui, tgui::Tab::Ptr tabs, int buttonPos);
 	static void saveCreatures(tgui::TextBox::Ptr path, tgui::TextBox::Ptr filename);
 	static void loadCreatures(tgui::TextBox::Ptr path, tgui::TextBox::Ptr filename);
+	static void restartSimulation(tgui::TextBox::Ptr);
 	static void zoomView(int numOfTicks);
 
 	static void startStopSimulation(tgui::Button::Ptr startStopButton);
@@ -40,6 +41,7 @@ private:
 	//TODO separate map height and width from window height and width?
 	static int width;
 	static int height;
+	static int seed;
 	static ResourceMap* resourceMap;
 	static CreatureMap* creatureMap;
 	static CreatureList* creatureList;
@@ -51,7 +53,7 @@ private:
 	static clock_t statTimer;
 	static int mouseX;
 	static int mouseY;
-	static Creature* selectedSpecies;
+	static float* selectedSpecies;
 	static bool selectSpecies;
 };
 

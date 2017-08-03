@@ -955,7 +955,7 @@ void Creature::pregnancyCheck() {
 				x++;
 			}
 		}
-		// make sure the whole babies list is empty before declaring not pregnant
+		// TODO make sure the whole babies list is empty before declaring not pregnant
 		pregnant = false;
 	}
 }
@@ -1098,23 +1098,21 @@ void Creature::replicate() {
 		babyNumOffspringRange, babyNumOffspringMedian, babyLengthOfPregnancy);
 }
 
-bool Creature::isSameSpecies(Creature* creatureToCheck) {
+bool Creature::isSameSpecies(float* statsToCheck) {
 	//check if the other creature falls within the bounds of what is considered to be the same species
 	//TODO possibly add more here?
 	float speciesVar = 0.03;
-	if (creatureToCheck->isCarnivore() != carnivore) {
+
+	if (statsToCheck[0] != carnivore) {
 		return false;
 	}
-	else if (creatureToCheck->getMaxMass() > maxMass * (1.0f + speciesVar) || creatureToCheck->getMaxMass() < maxMass * (1.0f - speciesVar)) {
+	else if (statsToCheck[1] > maxMass * (1.0f + speciesVar) || statsToCheck[1] < maxMass * (1.0f - speciesVar)) {
 		return false;
 	}
-	else if (creatureToCheck->getEnergyThreshold() > energyThreshold * (1.0f + speciesVar) || creatureToCheck->getEnergyThreshold() < energyThreshold * (1.0f - speciesVar)) {
+	else if (statsToCheck[2] > energyThreshold * (1.0f + speciesVar) || statsToCheck[2] < energyThreshold * (1.0f - speciesVar)) {
 		return false;
 	}
-	else if (creatureToCheck->getGrowthRate() > growthRate * (1.0f + speciesVar) || creatureToCheck->getGrowthRate() < growthRate * (1.0f - speciesVar)) {
-		return false;
-	}
-	else if (creatureToCheck->getMaxMass() > maxMass * (1.0f + speciesVar) || creatureToCheck->getMaxMass() < maxMass * (1.0f - speciesVar)) {
+	else if (statsToCheck[3] > growthRate * (1.0f + speciesVar) || statsToCheck[3] < growthRate * (1.0f - speciesVar)) {
 		return false;
 	}
 	return true;

@@ -40,7 +40,7 @@ public:
 	int* getCreatureID() { return creatureID; };
 	int getDecisionsBeforeAction() { return decisionsBeforeAction; };
 	int getAge() { return age; };
-	bool isSameSpecies(Creature* creatureToCheck);
+	bool isSameSpecies(float* statsToCheck);
 
 	static ResourceMap* resourceMap;
 	static CreatureMap* creatureMap;

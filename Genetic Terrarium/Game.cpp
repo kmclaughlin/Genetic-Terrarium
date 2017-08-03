@@ -12,6 +12,7 @@ sf::Sprite Game::sprite;
 sf::Uint8* Game::pixels;
 int Game::width = NULL;
 int Game::height = NULL;
+int Game::seed = static_cast <unsigned> (time(0));
 ResourceMap* Game::resourceMap = NULL;
 CreatureMap* Game::creatureMap = NULL;
 CreatureList* Game::creatureList = NULL;
@@ -23,7 +24,7 @@ clock_t Game::runSpeedLimiter;
 clock_t Game::statTimer;
 int Game::mouseX = -1;
 int Game::mouseY = -1;
-Creature* Game::selectedSpecies = NULL;
+float* Game::selectedSpecies = NULL;
 bool Game::selectSpecies = false;
 
 void Game::Start(int screenX, int screenY){
@@ -121,25 +122,17 @@ void Game::GameLoop(){
 					}
 				}
 				else { //if (creatureMap->getCell(x, y) != NULL) {
-					if (selectedSpecies == NULL) {
-						pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0]; // R
-						pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1]; // G
-						pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
-						pixels[(y * width + x) * 4 + 3] = 255; // A
-					}
-					else if (creatureMap->getCell(x, y)->isSameSpecies(selectedSpecies)) {
-						if (!selectedSpecies->isAlive()) selectedSpecies = NULL;
+					if (selectedSpecies != NULL && creatureMap->getCell(x, y)->isSameSpecies(selectedSpecies)) {
 						pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0] + 255; // R
 						pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1] + 50; // G
 						pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
 						pixels[(y * width + x) * 4 + 3] = 255; // A
 					}
 					else {
-						if (!selectedSpecies->isAlive()) selectedSpecies = NULL;
 						pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0]; // R
 						pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1]; // G
 						pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
-						pixels[(y * width + x) * 4 + 3] = 125; // A
+						pixels[(y * width + x) * 4 + 3] = 255; // A
 					}
 				}
 			}
@@ -199,7 +192,20 @@ void Game::GameLoop(){
 				//need to switch to view coordinates and adjust for center
 				int mapX = (float)(currentEvent.mouseButton.x - ((float)_mainWindow.getSize().x / 2.0f)) * (float)_view.getSize().x / (float)_mainWindow.getSize().x + (float)_view.getCenter().x;
 				int mapY = (float)(currentEvent.mouseButton.y - ((float)_mainWindow.getSize().y / 2.0f))  * (float)_view.getSize().y / (float)_mainWindow.getSize().y + (float)_view.getCenter().y;
-				selectedSpecies = creatureMap->getCell(mapX, mapY);
+				if (creatureMap->getCell(mapX, mapY)) {
+					if (selectedSpecies != NULL) delete[] selectedSpecies;
+					selectedSpecies = new float[4];
+					selectedSpecies[0] = creatureMap->getCell(mapX, mapY)->isCarnivore();
+					selectedSpecies[1] = creatureMap->getCell(mapX, mapY)->getMaxMass();
+					selectedSpecies[2] = creatureMap->getCell(mapX, mapY)->getEnergyThreshold();
+					selectedSpecies[3] = creatureMap->getCell(mapX, mapY)->getGrowthRate();
+				}
+				else {
+					if (selectedSpecies != NULL) {
+						delete[] selectedSpecies;
+						selectedSpecies = NULL;
+					}
+				}
 				selectSpecies = false;
 			}
 			else {
@@ -306,6 +312,36 @@ void Game::loadCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr file
 	}
 }
 
+void Game::restartSimulation(tgui::TextBox::Ptr seedBox){
+	string seedString = string(seedBox->getText());
+	//remove any non digits from the string
+	size_t charToRemove = seedString.find_first_not_of("0123456789");
+	while (charToRemove != string::npos) {
+		seedString.erase(charToRemove, 1);
+		charToRemove = seedString.find_first_not_of("0123456789");
+	}
+	//make sure the value contained in the string isn't larger than signed int max
+	if (seedString.size() > 10) {
+		seedString = seedString.substr(0, 10);
+	}
+	if (seedString[0] > '1') {
+		seedString[0] = '1';
+	}
+	//Update the GUI with the processed seed
+	seedBox->setText(seedString);
+	seed = stoi(seedString);
+	//clean up last run
+	cout << "deleting resource map" << endl;
+	delete resourceMap;
+	cout << "deleting creature map" << endl;
+	delete creatureMap;
+	cout << "deleting creature list" << endl;
+	//TODO don't delete the creaturelist pool all the craetures but also change game init so it doesnt create a new list and cause mem leak
+	//delete creatureList;
+	cout << "deleted all" << endl;
+	GameInit();
+}
+
 void Game::zoomView(int numOfTicks) {
 	double aspectRatio = _view.getSize().y / _view.getSize().x;
 	double newX = _view.getSize().x - 0.1 * numOfTicks * width;
@@ -317,6 +353,14 @@ void Game::zoomView(int numOfTicks) {
 }
 
 void Game::GameInit(){
+	/*
+	Need to update the game init. when game starts need to seed the random number generatorto provide the random seed which is then used to 
+	reseed the RNG to give a random spread of random seeds. the rest of this function shouldn't be run until the start button is pressed.
+	extract resourcemap, creature map and creature list object creation and change constructors to create empty objects that can be then reset
+	with a method so as to not fragment the memory on restart.
+	*/
+
+
 	/*
 	gnenerate creatures and populate creature list and creature map
 		where does this happen?? create creature, set tree to null and call random tree on it?
@@ -332,7 +376,7 @@ void Game::GameInit(){
 	int numCarnivoreSpecies = 0;
 	
 	//seed the random number generator
-	srand(static_cast <unsigned> (time(0)));
+	srand(seed);
 	initialiseXorState();
 	//srand(1234567890);
 
@@ -375,6 +419,7 @@ void Game::GameInit(){
 				}
 			}
 		}
+		delete speciesBase;
 	}
 	for (int i = 0; i < numCarnivoreSpecies; i++) {
 		//creates full random creature to act as the template for a species
@@ -407,6 +452,7 @@ void Game::GameInit(){
 				}
 			}
 		}
+		delete speciesBase;
 	}
 }
 
@@ -498,7 +544,8 @@ void Game::GUISetup() {
 	load creatures
 	Console?
 	speed up slow down slider
-	zoom slider
+	zoom slider??
+	button to track species
 	button to show decision tree in new window
 	track creature?? have clicked creature leave a trail or center screen on creature and follow
 
@@ -577,10 +624,8 @@ void Game::GUISetup() {
 	speedSlider->setMaximum(25);
 	speedSlider->setValue(25);
 	panel1->add(speedSlider, "speedSlider");
-	//speedSlider->connect("Focused Unfocused", [&](tgui::Slider::Ptr slider) { speedFactor = slider->getValue(); enableScreenInteraction = !enableScreenInteraction; }, speedSlider);
 	speedSlider->connect("ValueChanged", [&](int value) { speedFactor = value; });
-	speedSlider->connect("MouseEntered  MouseLeft", [&](tgui::Slider::Ptr slider) { if(slider->isFocused()) enableScreenInteraction = !enableScreenInteraction; }, speedSlider);
-	// Focused Unfocused enableScreenInteraction = !enableScreenInteraction;
+	speedSlider->connect("MouseEntered  MouseLeft", [&]() { enableScreenInteraction = !enableScreenInteraction; });
 
 	//zoom slider
 	/*tgui::Label::Ptr zoomSliderLabel = tgui::Label::create();
@@ -602,6 +647,25 @@ void Game::GUISetup() {
 	selectSpeciesButton->setText("Select Species");
 	panel1->add(selectSpeciesButton, "selectSpeciesButton");
 	selectSpeciesButton->connect("pressed", [&]() { selectSpecies = true; });
+	
+	//Restart button and start options
+	auto restartButton = tgui::Button::create();
+	restartButton->setPosition(100, 600);
+	restartButton->setSize(80, 40);
+	restartButton->setText("Restart");
+	panel1->add(restartButton, "restartButton");
+
+	tgui::TextBox::Ptr seedBox = tgui::TextBox::create();
+	seedBox->setPosition(100, 650);
+	seedBox->setSize(140, 40);
+	seedBox->setText(to_string(seed));
+	panel1->add(seedBox, "seedBox");
+	//TODO on init get seed from time, put in box, when start take seed from box incase changed
+	//add options for num herb species and starting grass cover etc
+
+	//todo add check box for adding herbivores percentage grass cover
+	seedBox->connect("Focused Unfocused", [&]() { enableScreenInteraction = !enableScreenInteraction; });
+	restartButton->connect("pressed", restartSimulation, seedBox);
 
 
 	//Creature info Panel widgets

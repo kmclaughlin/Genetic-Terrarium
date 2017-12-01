@@ -51,6 +51,7 @@ Creature::Creature(bool carnivore) :carnivore(carnivore) {
 			
 	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
 	age = -1;
+	generation = 0;
 	//update creature variables
 	updateCreatureVariables();
 
@@ -73,7 +74,7 @@ Creature::~Creature(){
 //initialise the creature from its parents
 
 void Creature::setCreatureAttributes(int* tree, int treeLength, bool _carnivore, float _maxMass, float _mass, float _energy, float _energyThreshold, 
-	float _growthRate, int _numOffspringRange, int _numOffspringMedian, int _lengthOfPregnancy) {
+	float _growthRate, int _numOffspringRange, int _numOffspringMedian, int _lengthOfPregnancy, int _generation) {
 
 	delete[] decisionTree;
 
@@ -92,6 +93,7 @@ void Creature::setCreatureAttributes(int* tree, int treeLength, bool _carnivore,
 	numOffspringRange = _numOffspringRange;
 	numOffspringMedian = _numOffspringMedian;
 	lengthOfPregnancy = _lengthOfPregnancy;
+	generation = _generation;
 	mapX = NULL;
 	mapY = NULL;
 
@@ -1073,7 +1075,7 @@ void Creature::replicate() {
 	//int* babyTree = new int[babyTreeLength];
 
 	int babyTreeLength = 0;
-	int* babyTree = new int;
+	int* babyTree = NULL;
 
 	generateOffspringDecisionTree(babyTree, babyTreeLength, NULL, NULL);
 
@@ -1095,7 +1097,7 @@ void Creature::replicate() {
 
 	baby[0] = creatureList->getPoolCreature();
 	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, babyCarnivore, babyMaxMass, babyMass, babyEnergy, babyEnergyThreshold, babyGrowthRate,
-		babyNumOffspringRange, babyNumOffspringMedian, babyLengthOfPregnancy);
+		babyNumOffspringRange, babyNumOffspringMedian, babyLengthOfPregnancy, generation+1);
 }
 
 bool Creature::isSameSpecies(float* statsToCheck) {

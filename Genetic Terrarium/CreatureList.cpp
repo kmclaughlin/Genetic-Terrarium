@@ -99,6 +99,8 @@ void CreatureList::update(){
 	float totalEnergy = 0;
 	int highestAge = 0;
 	int totalAge = 0;
+	int highestGeneration = 0;
+	int lowestGeneration = INT_MAX;
 	//activeNode points to the first available pool creature, the next is the first active creature
 	node* current = NULL;
 	if (aliveNode != NULL) {
@@ -123,6 +125,13 @@ void CreatureList::update(){
 					if (current->creature->getAge() > highestAge) {
 						highestAge = current->creature->getAge();
 					}
+					int currentCreatureGeneration = current->creature->getGeneration();
+					if (currentCreatureGeneration > highestGeneration) {
+						highestGeneration = currentCreatureGeneration;
+					}
+					else if (currentCreatureGeneration < lowestGeneration) {
+						lowestGeneration = currentCreatureGeneration;
+					}
 				}
 			}
 			else {
@@ -143,6 +152,8 @@ void CreatureList::update(){
 		numOfActiveCreatures = tempNumOfActiveCreatures;
 		ageOfOldest = highestAge;
 		averageAge = totalAge / numOfActiveCreatures;
+		highestGen = highestGeneration;
+		lowestGen = lowestGeneration;
 		collectStats = false;
 	}
 }

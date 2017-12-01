@@ -15,7 +15,7 @@ public:
 	~Creature();
 
 	void setCreatureAttributes(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energy, float energyThreshold, float growthRate,
-		int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy);
+		int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy, int _generation);
 	void setCreatureAttributes(Creature* creature);
 	void born(int x, int y);
 
@@ -40,6 +40,7 @@ public:
 	int* getCreatureID() { return creatureID; };
 	int getDecisionsBeforeAction() { return decisionsBeforeAction; };
 	int getAge() { return age; };
+	int getGeneration() { return generation; };
 	bool isSameSpecies(float* statsToCheck);
 
 	static ResourceMap* resourceMap;
@@ -84,6 +85,7 @@ protected:
 	float defense; //decreases exponentially with mass
 	int speed;//?? how can this be implemented? no speed attribute, larger tree takes more cycles to run so acts as a speed meter
 	int age;//?? update ticks survived?
+	int generation; // number of ancestors
 	bool mature; //maturity reached at 80% max mass, when mature can breed
 	int numOffspringRange;
 	int numOffspringMedian;

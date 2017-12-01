@@ -19,6 +19,8 @@ public:
 	float getAverageDecisionsBeforeActions() { return averageDecisionsBeforeActions; };
 	int getAgeOfOldest() { return ageOfOldest; };
 	int getAverageAge() { return averageAge; };
+	int getHighestGen() { return highestGen; };
+	int getLowestGen() { return lowestGen; };
 	void collectCreatureStats(void) { collectStats = true; };
 
 private:

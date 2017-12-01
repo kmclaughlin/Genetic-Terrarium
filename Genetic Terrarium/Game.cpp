@@ -93,8 +93,8 @@ void Game::GameLoop(){
 				"\nNum of Creatures: " + to_string(creatureList->getNumOfActiveCreatures()) +
 				"\nAge of oldest:    " + to_string(creatureList->getAgeOfOldest()) +
 				"\nAverage age:      " + to_string(creatureList->getAverageAge()) +
-				"\nHighest gen:      " + to_string(0) +
-				"\nLowest gen:       " + to_string(0) +
+				"\nHighest gen:      " + to_string(creatureList->getHighestGen()) +
+				"\nLowest gen:       " + to_string(creatureList->getLowestGen()) +
 				"\nAverage mass:     " + to_string((int)creatureList->getAverageMass()) +
 				"\n% herbivores:     " + to_string(100) +
 				"\nAv tree length:   " + to_string((int)creatureList->getAverageTreeLength()) +
@@ -106,13 +106,15 @@ void Game::GameLoop(){
 		}
 		cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
 		//Update the screen
+		startTime1 = clock();
+		float maxEnergy = resourceMap->getMaxEnergy();
 		for (int y = 0; y < height; y++)
 		{
 			for (int x = 0; x < width; x++)
 			{
 				if (creatureMap->getCell(x, y) == NULL) {
 					pixels[(y * width + x) * 4] = 0; // R
-					pixels[(y * width + x) * 4 + 1] = resourceMap->getCell(x, y) * 255 / resourceMap->getMaxEnergy(); // G
+					pixels[(y * width + x) * 4 + 1] = resourceMap->getCell(x, y) * 255 / maxEnergy; // G
 					pixels[(y * width + x) * 4 + 2] = 0; // B
 					if (selectedSpecies == NULL) {
 						pixels[(y * width + x) * 4 + 3] = 255; // A
@@ -137,11 +139,14 @@ void Game::GameLoop(){
 				}
 			}
 		}
+		//startTime1 = clock();
 		texture.update(pixels);
 	}
 
 	_mainWindow.clear();
 	_mainWindow.draw(sprite);
+	if (_gameState == Game::Running)
+		cout << "   screen: " << clock() - startTime1  << endl;
 	gui.draw(); // Draw all widgets
 	_mainWindow.display();
 
@@ -296,7 +301,7 @@ void Game::loadCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr file
 			Creature* creatureFromFile = creatureList->getPoolCreature();
 
 			creatureFromFile->setCreatureAttributes(decisionTree, decisionTreeLength, carnivore, maxMass, mass, 0.0f,
-				energyThreshold, growthRate, numOffspringRange, numOffspringMedian, lengthOfPregnancy);
+				energyThreshold, growthRate, numOffspringRange, numOffspringMedian, lengthOfPregnancy, 0);
 			int x, y;
 			do {
 				x = 1 + xor128() % (width - 1);

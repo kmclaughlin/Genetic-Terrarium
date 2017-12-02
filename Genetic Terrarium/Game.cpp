@@ -326,21 +326,21 @@ void Game::restartSimulation(tgui::TextBox::Ptr seedBox){
 		charToRemove = seedString.find_first_not_of("0123456789");
 	}
 	//make sure the value contained in the string isn't larger than signed int max
-	if (seedString.size() > 10) {
-		seedString = seedString.substr(0, 10);
+	if (seedString.size() > 9) {
+		seedString = seedString.substr(0, 9);
 	}
-	if (seedString[0] > '1') {
-		seedString[0] = '1';
-	}
+	//if (seedString[0] > '1') {
+	//	seedString[0] = '1';
+	//}
 	//Update the GUI with the processed seed
 	seedBox->setText(seedString);
 	seed = stoi(seedString);
 	//clean up last run
 	cout << "deleting world map" << endl;
 	delete worldMap;
-	cout << "deleting creature list" << endl;
+	cout << "Pooling creature list" << endl;
 	//TODO don't delete the creaturelist pool all the craetures but also change game init so it doesnt create a new list and cause mem leak
-	//delete creatureList;
+	creatureList->poolAllCreatures();
 	cout << "deleted all" << endl;
 	GameInit();
 }
@@ -384,7 +384,8 @@ void Game::GameInit(){
 	//srand(1234567890);
 
 	worldMap = new WorldMap(width, height, 1.0f);
-	creatureList = new CreatureList(2000);
+	if (!creatureList)
+		creatureList = new CreatureList(2000);
 	//pass the maps to the creature class as static pointers so creatures can interact with them
 	Creature::worldMap = worldMap;
 	Creature::creatureList = creatureList;

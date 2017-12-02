@@ -9,6 +9,7 @@ public:
 	~CreatureList();
 	
 	void update();
+	void poolAllCreatures();
 	Creature* getPoolCreature();
 	int getAliveCreatures(Creature** &numOfAliveCreatures);
 	int getLengthOfList() { return lengthOfList; };

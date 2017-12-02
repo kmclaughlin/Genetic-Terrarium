@@ -158,6 +158,28 @@ void CreatureList::update(){
 	}
 }
 
+void CreatureList::poolAllCreatures() {
+	node* current = NULL;
+	if (aliveNode != NULL) {
+		current = aliveNode->next;
+	}
+	else {
+		current = root;
+	}
+	while (current != NULL) {
+		//pooled creatures are dead, non pooled creatures are alive, but if they are not born yet they shouldn't be updated. They are not active
+		node* temp = current->next;
+		if (current->creature->isActive()) {
+			current->creature->kill();
+			returnCreatureToPool(current);
+		}
+		else if (!current->creature->isAlive()) {
+			returnCreatureToPool(current);
+		}
+		current = temp;
+	}
+}
+
 int CreatureList::getAliveCreatures(Creature** &aliveCreatures) {
 	aliveCreatures = new Creature*[numOfAliveCreatures];
 	node* current = NULL;

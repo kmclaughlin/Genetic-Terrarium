@@ -30,16 +30,13 @@
     <ClInclude Include="CreatureList.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CreatureMap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Game.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ResourceMap.h">
+    <ClInclude Include="Xorshift.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Xorshift.h">
+    <ClInclude Include="WorldMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -56,16 +53,13 @@
     <ClCompile Include="CreatureList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CreatureMap.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Game.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ResourceMap.cpp">
+    <ClCompile Include="Xorshift.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Xorshift.cpp">
+    <ClCompile Include="WorldMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -13,8 +13,7 @@ sf::Uint8* Game::pixels;
 int Game::width = NULL;
 int Game::height = NULL;
 int Game::seed = static_cast <unsigned> (time(0));
-ResourceMap* Game::resourceMap = NULL;
-CreatureMap* Game::creatureMap = NULL;
+WorldMap* Game::worldMap = NULL;
 CreatureList* Game::creatureList = NULL;
 int Game::ticksCount = 0;
 bool Game::enableScreenInteraction = true;
@@ -79,7 +78,7 @@ void Game::GameLoop(){
 		runSpeedLimiter = clock();
 
 		startTime1 = clock();
-		resourceMap->update();
+		worldMap->updatePlants();
 		startTime2 = clock();
 		creatureList->update();
 		
@@ -104,17 +103,18 @@ void Game::GameLoop(){
 			creatureList->collectCreatureStats();
 			statTimer = clock();
 		}
-		cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
+		//cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
 		//Update the screen
 		startTime1 = clock();
-		float maxEnergy = resourceMap->getMaxEnergy();
+		float maxEnergy = worldMap->getMaxEnergy();
 		for (int y = 0; y < height; y++)
 		{
 			for (int x = 0; x < width; x++)
 			{
-				if (creatureMap->getCell(x, y) == NULL) {
+				MapCell mapCell = worldMap->getCell(x, y);
+				if (mapCell.creature == NULL) {
 					pixels[(y * width + x) * 4] = 0; // R
-					pixels[(y * width + x) * 4 + 1] = resourceMap->getCell(x, y) * 255 / maxEnergy; // G
+					pixels[(y * width + x) * 4 + 1] = mapCell.plantValue * 255 / maxEnergy; // G
 					pixels[(y * width + x) * 4 + 2] = 0; // B
 					if (selectedSpecies == NULL) {
 						pixels[(y * width + x) * 4 + 3] = 255; // A
@@ -124,16 +124,16 @@ void Game::GameLoop(){
 					}
 				}
 				else { //if (creatureMap->getCell(x, y) != NULL) {
-					if (selectedSpecies != NULL && creatureMap->getCell(x, y)->isSameSpecies(selectedSpecies)) {
-						pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0] + 255; // R
-						pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1] + 50; // G
-						pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
+					if (selectedSpecies != NULL && mapCell.creature->isSameSpecies(selectedSpecies)) {
+						pixels[(y * width + x) * 4] = mapCell.creature->getCreatureID()[0] + 255; // R
+						pixels[(y * width + x) * 4 + 1] = mapCell.creature->getCreatureID()[1] + 50; // G
+						pixels[(y * width + x) * 4 + 2] = mapCell.creature->getCreatureID()[2]; // B
 						pixels[(y * width + x) * 4 + 3] = 255; // A
 					}
 					else {
-						pixels[(y * width + x) * 4] = creatureMap->getCell(x, y)->getCreatureID()[0]; // R
-						pixels[(y * width + x) * 4 + 1] = creatureMap->getCell(x, y)->getCreatureID()[1]; // G
-						pixels[(y * width + x) * 4 + 2] = creatureMap->getCell(x, y)->getCreatureID()[2]; // B
+						pixels[(y * width + x) * 4] = mapCell.creature->getCreatureID()[0]; // R
+						pixels[(y * width + x) * 4 + 1] = mapCell.creature->getCreatureID()[1]; // G
+						pixels[(y * width + x) * 4 + 2] = mapCell.creature->getCreatureID()[2]; // B
 						pixels[(y * width + x) * 4 + 3] = 255; // A
 					}
 				}
@@ -145,8 +145,8 @@ void Game::GameLoop(){
 
 	_mainWindow.clear();
 	_mainWindow.draw(sprite);
-	if (_gameState == Game::Running)
-		cout << "   screen: " << clock() - startTime1  << endl;
+	//if (_gameState == Game::Running)
+		//cout << "   screen: " << clock() - startTime1  << endl;
 	gui.draw(); // Draw all widgets
 	_mainWindow.display();
 
@@ -197,13 +197,13 @@ void Game::GameLoop(){
 				//need to switch to view coordinates and adjust for center
 				int mapX = (float)(currentEvent.mouseButton.x - ((float)_mainWindow.getSize().x / 2.0f)) * (float)_view.getSize().x / (float)_mainWindow.getSize().x + (float)_view.getCenter().x;
 				int mapY = (float)(currentEvent.mouseButton.y - ((float)_mainWindow.getSize().y / 2.0f))  * (float)_view.getSize().y / (float)_mainWindow.getSize().y + (float)_view.getCenter().y;
-				if (creatureMap->getCell(mapX, mapY)) {
+				if (worldMap->getCell(mapX, mapY).creature) {
 					if (selectedSpecies != NULL) delete[] selectedSpecies;
 					selectedSpecies = new float[4];
-					selectedSpecies[0] = creatureMap->getCell(mapX, mapY)->isCarnivore();
-					selectedSpecies[1] = creatureMap->getCell(mapX, mapY)->getMaxMass();
-					selectedSpecies[2] = creatureMap->getCell(mapX, mapY)->getEnergyThreshold();
-					selectedSpecies[3] = creatureMap->getCell(mapX, mapY)->getGrowthRate();
+					selectedSpecies[0] = worldMap->getCell(mapX, mapY).creature->isCarnivore();
+					selectedSpecies[1] = worldMap->getCell(mapX, mapY).creature->getMaxMass();
+					selectedSpecies[2] = worldMap->getCell(mapX, mapY).creature->getEnergyThreshold();
+					selectedSpecies[3] = worldMap->getCell(mapX, mapY).creature->getGrowthRate();
 				}
 				else {
 					if (selectedSpecies != NULL) {
@@ -306,7 +306,7 @@ void Game::loadCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr file
 			do {
 				x = 1 + xor128() % (width - 1);
 				y = 1 + xor128() % (height - 1);
-			} while (!creatureMap->addCreature(creatureFromFile, x, y));
+			} while (!worldMap->addCreature(creatureFromFile, x, y));
 			creatureFromFile->born(x, y);
 		}
 		inputFile.close();
@@ -336,10 +336,8 @@ void Game::restartSimulation(tgui::TextBox::Ptr seedBox){
 	seedBox->setText(seedString);
 	seed = stoi(seedString);
 	//clean up last run
-	cout << "deleting resource map" << endl;
-	delete resourceMap;
-	cout << "deleting creature map" << endl;
-	delete creatureMap;
+	cout << "deleting world map" << endl;
+	delete worldMap;
 	cout << "deleting creature list" << endl;
 	//TODO don't delete the creaturelist pool all the craetures but also change game init so it doesnt create a new list and cause mem leak
 	//delete creatureList;
@@ -385,12 +383,10 @@ void Game::GameInit(){
 	initialiseXorState();
 	//srand(1234567890);
 
-	resourceMap = new ResourceMap(width, height, 1.0f);
-	creatureMap = new CreatureMap(width, height);
+	worldMap = new WorldMap(width, height, 1.0f);
 	creatureList = new CreatureList(2000);
 	//pass the maps to the creature class as static pointers so creatures can interact with them
-	Creature::resourceMap = resourceMap;
-	Creature::creatureMap = creatureMap;
+	Creature::worldMap = worldMap;
 	Creature::creatureList = creatureList;
 	
 	for (int i = 0; i < numHerbivoreSpecies; i++){
@@ -413,12 +409,12 @@ void Game::GameInit(){
 		for (int x = speciesSpawnX - 150; x < speciesSpawnX + 150; x++){
 			for (int y = speciesSpawnY - 100; y < speciesSpawnY + 100; y++){
 				//with a 1/14 chance put a creature in the cell if the cell is free
-				if (xor128() % 30 < 1 && creatureMap->getCell(x, y) == NULL){
+				if (xor128() % 30 < 1 && worldMap->getCell(x, y).creature == NULL){
 					//create a creature in the same species as the randomised one
 					Creature* creature = creatureList->getPoolCreature();
 					creature->setCreatureAttributes(speciesBase);
 					//add the creature to the map
-					creatureMap->addCreature(creature, x, y);
+					worldMap->addCreature(creature, x, y);
 					creature->born(x, y);
 					// add creature to the list
 				}
@@ -446,12 +442,12 @@ void Game::GameInit(){
 		for (int x = speciesSpawnX - 250; x < speciesSpawnX + 250; x++) {
 			for (int y = speciesSpawnY - 140; y < speciesSpawnY + 140; y++) {
 				//with a 1/14 chance put a creature in the cell if the cell is free
-				if (xor128() % 60 < 1 && creatureMap->getCell(x, y) == NULL) {
+				if (xor128() % 60 < 1 && worldMap->getCell(x, y).creature == NULL) {
 					//create a creature in the same species as the randomised one
 					Creature* creature = creatureList->getPoolCreature();
 					creature->setCreatureAttributes(speciesBase);
 					//add the creature to the map
-					creatureMap->addCreature(creature, x, y);
+					worldMap->addCreature(creature, x, y);
 					creature->born(x, y);
 					// add creature to the list
 				}

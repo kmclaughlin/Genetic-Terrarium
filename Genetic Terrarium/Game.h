@@ -7,8 +7,7 @@
 #include "TGUI/TGUI.hpp"
 #include "Xorshift.h"
 #include "Creature.h"
-#include "ResourceMap.h"
-#include "CreatureMap.h"
+#include "WorldMap.h"
 #include "CreatureList.h"
 
 class Game{
@@ -42,8 +41,7 @@ private:
 	static int width;
 	static int height;
 	static int seed;
-	static ResourceMap* resourceMap;
-	static CreatureMap* creatureMap;
+	static WorldMap* worldMap;
 	static CreatureList* creatureList;
 	static int ticksCount;
 	static bool enableScreenInteraction;

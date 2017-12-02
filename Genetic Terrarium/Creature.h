@@ -1,7 +1,6 @@
 #ifndef CREATURE_H
 #define CREATURE_H
-#include "CreatureMap.h"
-#include "ResourceMap.h"
+#include "WorldMap.h"
 #include "Xorshift.h"
 
 class CreatureList;
@@ -43,8 +42,7 @@ public:
 	int getGeneration() { return generation; };
 	bool isSameSpecies(float* statsToCheck);
 
-	static ResourceMap* resourceMap;
-	static CreatureMap* creatureMap;
+	static WorldMap* worldMap;
 	static CreatureList* creatureList;
 
 protected:

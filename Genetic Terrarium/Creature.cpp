@@ -21,8 +21,7 @@ split decision trees out int its own object
 const  int Creature::NUM_OF_DECISIONS = 31;
 const  int Creature::NUM_OF_ACTIONS = 6;
 
-ResourceMap* Creature::resourceMap = NULL;
-CreatureMap* Creature::creatureMap = NULL;
+WorldMap* Creature::worldMap = NULL;
 CreatureList* Creature::creatureList = NULL;
 
 Creature::Creature(bool carnivore) :carnivore(carnivore) {
@@ -167,7 +166,7 @@ bool Creature::update(){
 	bool returnValue = true;
 	if (!alive) {
 		//remove the creature from the craeture map
-		creatureMap->removeCreature(mapX, mapY);
+		worldMap->removeCreature(mapX, mapY);
 		for (int i = 0; i < 1; i++) {
 			if (baby[i] != NULL) {
 				baby[i]->kill();
@@ -200,53 +199,53 @@ bool Creature::update(){
 				break;
 			case 2:
 				//move up
-				if (creatureMap->moveCreature(mapX, mapY, 'u')) {
+				if (worldMap->moveCreature(mapX, mapY, 'u')) {
 					mapY++;
 					energy -= movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && creatureMap->getCell(mapX, mapY + 1) != NULL) {//&& !creatureMap->getCell(mapX, mapY + 1)->isCarnivore()) {
-					energy += creatureMap->getCell(mapX, mapY + 1)->getEnergy();
-					creatureMap->getCell(mapX, mapY + 1)->kill();
+				else if (carnivore && worldMap->getCell(mapX, mapY + 1).creature != NULL) {//&& !creatureMap->getCell(mapX, mapY + 1)->isCarnivore()) {
+					energy += worldMap->getCell(mapX, mapY + 1).creature->getEnergy();
+					worldMap->getCell(mapX, mapY + 1).creature->kill();
 				}
 				takeAction();
 				break;
 			case 3:
 				//move down
-				if (creatureMap->moveCreature(mapX, mapY, 'd')) {
+				if (worldMap->moveCreature(mapX, mapY, 'd')) {
 					mapY--;
 					energy -= movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && creatureMap->getCell(mapX, mapY - 1) != NULL ){//&& !creatureMap->getCell(mapX, mapY - 1)->isCarnivore()) {
-					energy += creatureMap->getCell(mapX, mapY - 1)->getEnergy();
-					creatureMap->getCell(mapX, mapY - 1)->kill();
+				else if (carnivore && worldMap->getCell(mapX, mapY - 1).creature != NULL ){//&& !creatureMap->getCell(mapX, mapY - 1)->isCarnivore()) {
+					energy += worldMap->getCell(mapX, mapY - 1).creature->getEnergy();
+					worldMap->getCell(mapX, mapY - 1).creature->kill();
 				}
 				takeAction();
 				break;
 			case 4:
 				//move left
-				if (creatureMap->moveCreature(mapX, mapY, 'l')) {
+				if (worldMap->moveCreature(mapX, mapY, 'l')) {
 					mapX--;
 					energy -= movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && creatureMap->getCell(mapX - 1, mapY) != NULL) {//&& !creatureMap->getCell(mapX - 1, mapY)->isCarnivore()) {
-					energy += creatureMap->getCell(mapX - 1, mapY)->getEnergy();
-					creatureMap->getCell(mapX - 1, mapY)->kill();
+				else if (carnivore && worldMap->getCell(mapX - 1, mapY).creature != NULL) {//&& !creatureMap->getCell(mapX - 1, mapY)->isCarnivore()) {
+					energy += worldMap->getCell(mapX - 1, mapY).creature->getEnergy();
+					worldMap->getCell(mapX - 1, mapY).creature->kill();
 				}
 				takeAction();
 				break;
 			case 5:
 				//move right
-				if (creatureMap->moveCreature(mapX, mapY, 'r')) {
+				if (worldMap->moveCreature(mapX, mapY, 'r')) {
 					mapX++;
 					energy -= movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && creatureMap->getCell(mapX + 1, mapY) != NULL) {//&& !creatureMap->getCell(mapX + 1, mapY)->isCarnivore()) {
-					energy += creatureMap->getCell(mapX + 1, mapY)->getEnergy();
-					creatureMap->getCell(mapX + 1, mapY)->kill();
+				else if (carnivore && worldMap->getCell(mapX + 1, mapY).creature != NULL) {//&& !creatureMap->getCell(mapX + 1, mapY)->isCarnivore()) {
+					energy += worldMap->getCell(mapX + 1, mapY).creature->getEnergy();
+					worldMap->getCell(mapX + 1, mapY).creature->kill();
 				}
 				takeAction();
 				break;
@@ -351,19 +350,19 @@ bool Creature::update(){
 				break;
 			case 2000:
 				//check if cell up is free
-				nextTreeNode(creatureMap->isCellFree(mapX, mapY + 1));
+				nextTreeNode(worldMap->isCellFree(mapX, mapY + 1));
 				break;
 			case 2100:
 				//check if cell down is free
-				nextTreeNode(creatureMap->isCellFree(mapX, mapY - 1));
+				nextTreeNode(worldMap->isCellFree(mapX, mapY - 1));
 				break;
 			case 2200:
 				//check if cell left is free
-				nextTreeNode(creatureMap->isCellFree(mapX + 1, mapY));
+				nextTreeNode(worldMap->isCellFree(mapX + 1, mapY));
 				break;
 			case 2300:
 				//check if cell right is free
-				nextTreeNode(creatureMap->isCellFree(mapX - 1, mapY));
+				nextTreeNode(worldMap->isCellFree(mapX - 1, mapY));
 				break;
 			case 2400:
 				nextTreeNode(carnivoreCompare('u', 1));
@@ -524,7 +523,7 @@ void Creature::updateCreatureVariables(){
 void Creature::takeAction(){
 	actionTaken = true;
 	if (!carnivore) {
-		energy += resourceMap->eatCell(mapX, mapY, mass / MAX_MAX_MASS);
+		energy += worldMap->eatCell(mapX, mapY, mass / MAX_MAX_MASS);
 	}
 	//TODO - maybe move this to the end of the update and have happen every update not just when action takes?
 	lookedAround = false;
@@ -582,11 +581,12 @@ void Creature::lookAround() {
 	if (carnivore) {
 		for (int y = mapY - 10; y < mapY + 11; y++) {
 			for (int x = mapX - 10; x < mapX + 11; x++) {
+				MapCell mapCell = worldMap->getCell(x, y);
 				if (y > mapY) {
 					//check cell contents
-					plantsNearby[0] += carnivoreWeights[weightsIndex] * resourceMap->getCell(x, y);
-					if (creatureMap->getCell(x, y) != NULL) {
-						if (creatureMap->getCell(x, y)->isCarnivore()) {
+					plantsNearby[0] += carnivoreWeights[weightsIndex] * mapCell.plantValue;
+					if (mapCell.creature != NULL) {
+						if (mapCell.creature->isCarnivore()) {
 							carnivoreNearby[0] += carnivoreWeights[weightsIndex];
 						}
 						else {
@@ -596,9 +596,9 @@ void Creature::lookAround() {
 					//friendlyNearby[0]++;
 				}
 				if (y < mapY) {
-					plantsNearby[1] += carnivoreWeights[weightsIndex] * resourceMap->getCell(x, y);
-					if (creatureMap->getCell(x, y) != NULL) {
-						if (creatureMap->getCell(x, y)->isCarnivore()) {
+					plantsNearby[1] += carnivoreWeights[weightsIndex] * mapCell.plantValue;
+					if (mapCell.creature != NULL) {
+						if (mapCell.creature->isCarnivore()) {
 							carnivoreNearby[1] += carnivoreWeights[weightsIndex];
 						}
 						else {
@@ -608,9 +608,9 @@ void Creature::lookAround() {
 					//friendlyNearby[1]++;
 				}
 				if (x < mapX) {
-					plantsNearby[2] += carnivoreWeights[weightsIndex] * resourceMap->getCell(x, y);
-					if (creatureMap->getCell(x, y) != NULL) {
-						if (creatureMap->getCell(x, y)->isCarnivore()) {
+					plantsNearby[2] += carnivoreWeights[weightsIndex] * mapCell.plantValue;
+					if (mapCell.creature != NULL) {
+						if (mapCell.creature->isCarnivore()) {
 							carnivoreNearby[2] += carnivoreWeights[weightsIndex];
 						}
 						else {
@@ -620,9 +620,9 @@ void Creature::lookAround() {
 					//friendlyNearby[2]++;
 				}
 				if (x > mapX) {
-					plantsNearby[3] += carnivoreWeights[weightsIndex] * resourceMap->getCell(x, y);
-					if (creatureMap->getCell(x, y) != NULL) {
-						if (creatureMap->getCell(x, y)->isCarnivore()) {
+					plantsNearby[3] += carnivoreWeights[weightsIndex] * mapCell.plantValue;
+					if (mapCell.creature != NULL) {
+						if (mapCell.creature->isCarnivore()) {
 							carnivoreNearby[3] += carnivoreWeights[weightsIndex];
 						}
 						else {
@@ -638,11 +638,12 @@ void Creature::lookAround() {
 	else {
 		for (int y = mapY - 2; y < mapY + 3; y++) {
 			for (int x = mapX - 2; x < mapX + 3; x++) {
+				MapCell mapCell = worldMap->getCell(x, y);
 				if (y > mapY) {
 					//check cell contents
-					plantsNearby[0] += herbivoreWeights[weightsIndex] * resourceMap->getCell(x, y);
-					if (creatureMap->getCell(x, y) != NULL) {
-						if (creatureMap->getCell(x, y)->isCarnivore()) {
+					plantsNearby[0] += herbivoreWeights[weightsIndex] * mapCell.plantValue;
+					if (mapCell.creature != NULL) {
+						if (mapCell.creature->isCarnivore()) {
 							carnivoreNearby[0] += herbivoreWeights[weightsIndex];
 						}
 						else {
@@ -652,9 +653,9 @@ void Creature::lookAround() {
 					//friendlyNearby[0]++;
 				}
 				if (y < mapY) {
-					plantsNearby[1] += herbivoreWeights[weightsIndex] * resourceMap->getCell(x, y);
-					if (creatureMap->getCell(x, y) != NULL) {
-						if (creatureMap->getCell(x, y)->isCarnivore()) {
+					plantsNearby[1] += herbivoreWeights[weightsIndex] * mapCell.plantValue;
+					if (mapCell.creature != NULL) {
+						if (mapCell.creature->isCarnivore()) {
 							carnivoreNearby[1] += herbivoreWeights[weightsIndex];
 						}
 						else {
@@ -664,9 +665,9 @@ void Creature::lookAround() {
 					//friendlyNearby[1]++;
 				}
 				if (x < mapX) {
-					plantsNearby[2] += herbivoreWeights[weightsIndex] * resourceMap->getCell(x, y);
-					if (creatureMap->getCell(x, y) != NULL) {
-						if (creatureMap->getCell(x, y)->isCarnivore()) {
+					plantsNearby[2] += herbivoreWeights[weightsIndex] * mapCell.plantValue;
+					if (mapCell.creature != NULL) {
+						if (mapCell.creature->isCarnivore()) {
 							carnivoreNearby[2] += herbivoreWeights[weightsIndex];
 						}
 						else {
@@ -676,9 +677,9 @@ void Creature::lookAround() {
 					//friendlyNearby[2]++;
 				}
 				if (x > mapX) {
-					plantsNearby[3] += herbivoreWeights[weightsIndex] * resourceMap->getCell(x, y);
-					if (creatureMap->getCell(x, y) != NULL) {
-						if (creatureMap->getCell(x, y)->isCarnivore()) {
+					plantsNearby[3] += herbivoreWeights[weightsIndex] * mapCell.plantValue;
+					if (mapCell.creature != NULL) {
+						if (mapCell.creature->isCarnivore()) {
 							carnivoreNearby[3] += herbivoreWeights[weightsIndex];
 						}
 						else {
@@ -947,7 +948,7 @@ void Creature::pregnancyCheck() {
 		int x = -1;
 		int y = -1;
 		while (baby[0] != NULL && x < 2) {
-			if (creatureMap->addCreature(baby[0], mapX + x, mapY + y)) {
+			if (worldMap->addCreature(baby[0], mapX + x, mapY + y)) {
 				baby[0]->born(mapX + x, mapY + y);
 				baby[0] = NULL;
 			}

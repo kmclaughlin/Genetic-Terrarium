@@ -18,7 +18,7 @@ split decision trees out int its own object
 //id's of actions (terminators) and decisions (nodes) for update switch and filling decision tree arrays
 //actions id's are < 100 and decision ids are *100 so they are identifiable in array list
 //as decisions and actions are sequential only actually need to know how many there are, can get random decision by (1 + xor128() % NUM_OF_DECISIONS) * 100
-const  int Creature::NUM_OF_DECISIONS = 31;
+const  int Creature::NUM_OF_DECISIONS = 39;
 const  int Creature::NUM_OF_ACTIONS = 6;
 
 WorldMap* Creature::worldMap = NULL;
@@ -44,9 +44,11 @@ Creature::Creature(bool carnivore) :carnivore(carnivore) {
 	setCreatureID();
 	//creatures start with a fixed percentage of their max energy
 	energy = maxEnergy * START_ENERGY_PERCENTAGE;
+	expendedEnergy = 0;
 	pregnant = false;
 	inHeat = false;
 	alive = false;
+	ticksSinceShit = 0;
 			
 	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
 	age = -1;
@@ -87,6 +89,7 @@ void Creature::setCreatureAttributes(int* tree, int treeLength, bool _carnivore,
 	maxMass = _maxMass;
 	mass = _mass;
 	energy = _energy;
+	expendedEnergy = 0;
 	energyThreshold = _energyThreshold;
 	growthRate = _growthRate;
 	numOffspringRange = _numOffspringRange;
@@ -103,15 +106,12 @@ void Creature::setCreatureAttributes(int* tree, int treeLength, bool _carnivore,
 	pregnant = false;
 	inHeat = false;
 	alive = true;
+	ticksSinceShit = 0;
 
 	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
 	age = -1;
 	//update creature variables
 	updateCreatureVariables();
-	//creatures start with a fixed percentage of their max energy
-	if (energy <= 0) {
-		energy = maxEnergy * START_ENERGY_PERCENTAGE;
-	}
 
 	//curentTreeNode holds the current decision sub node, which at this point is the whole tree, needs to be cpoied
 	currentTreeNodeStart = 0;
@@ -144,6 +144,7 @@ void Creature::setCreatureAttributes(Creature* creature) {
 	pregnant = false;
 	inHeat = false;
 	alive = true;
+	ticksSinceShit = 0;
 
 	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
 	age = -1;
@@ -152,6 +153,7 @@ void Creature::setCreatureAttributes(Creature* creature) {
 
 	//creatures start with a fixed percentage of their max energy
 	energy = maxEnergy * START_ENERGY_PERCENTAGE;
+	expendedEnergy = 0;
 	if (carnivore) {
 		energy = maxEnergy * START_ENERGY_PERCENTAGE * 20;
 	}
@@ -169,16 +171,21 @@ bool Creature::update(){
 		worldMap->removeCreature(mapX, mapY);
 		for (int i = 0; i < 1; i++) {
 			if (baby[i] != NULL) {
-				baby[i]->kill();
+				expendedEnergy += baby[i]->kill();
 				baby[i] = NULL;
 			}
 		}
+		worldMap->addCorpse(mapX, mapY, expendedEnergy + energy + (mass * ENERGY_TO_MASS_CONST));
+		energy = 0.0f;
+		expendedEnergy = 0.0f;
+		mass = 0.0f;
 		active = false;
 		returnValue = false;
 	}
 	else {
 		//reduce energy every tick regardless of action, it takes energy to live
 		energy -= movementCost;
+		expendedEnergy += movementCost;
 		pregnancyCheck();
 
 		//update creature variables
@@ -202,6 +209,7 @@ bool Creature::update(){
 				if (worldMap->moveCreature(mapX, mapY, 'u')) {
 					mapY++;
 					energy -= movementCost;
+					expendedEnergy += movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
 				else if (carnivore && worldMap->getCell(mapX, mapY + 1).creature != NULL) {//&& !creatureMap->getCell(mapX, mapY + 1)->isCarnivore()) {
@@ -215,6 +223,7 @@ bool Creature::update(){
 				if (worldMap->moveCreature(mapX, mapY, 'd')) {
 					mapY--;
 					energy -= movementCost;
+					expendedEnergy += movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
 				else if (carnivore && worldMap->getCell(mapX, mapY - 1).creature != NULL ){//&& !creatureMap->getCell(mapX, mapY - 1)->isCarnivore()) {
@@ -228,6 +237,7 @@ bool Creature::update(){
 				if (worldMap->moveCreature(mapX, mapY, 'l')) {
 					mapX--;
 					energy -= movementCost;
+					expendedEnergy += movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
 				else if (carnivore && worldMap->getCell(mapX - 1, mapY).creature != NULL) {//&& !creatureMap->getCell(mapX - 1, mapY)->isCarnivore()) {
@@ -241,6 +251,7 @@ bool Creature::update(){
 				if (worldMap->moveCreature(mapX, mapY, 'r')) {
 					mapX++;
 					energy -= movementCost;
+					expendedEnergy += movementCost;
 				}
 				//if the current creature is a carnivore and the target square has a creature in it
 				else if (carnivore && worldMap->getCell(mapX + 1, mapY).creature != NULL) {//&& !creatureMap->getCell(mapX + 1, mapY)->isCarnivore()) {
@@ -289,55 +300,55 @@ bool Creature::update(){
 				*/
 			case 100:
 				//is there most food in the up direction
-				nextTreeNode(plantsCompare('u', 1));
+				nextTreeNode(compare('u', 1, 'p'));
 				break;
 			case 200:
 				//is there most food in the down direction
-				nextTreeNode(plantsCompare('d', 1));
+				nextTreeNode(compare('d', 1, 'p'));
 				break;
 			case 300:
 				//is there most food in the left direction
-				nextTreeNode(plantsCompare('l', 1));
+				nextTreeNode(compare('l', 1, 'p'));
 				break;
 			case 400:
 				//is there most food in the right direction
-				nextTreeNode(plantsCompare('r', 1));
+				nextTreeNode(compare('r', 1, 'p'));
 				break;
 			case 500:
-				nextTreeNode(plantsCompare('u', 2));
+				nextTreeNode(compare('u', 2, 'p'));
 				break;
 			case 600:
-				nextTreeNode(plantsCompare('d', 2));
+				nextTreeNode(compare('d', 2, 'p'));
 				break;
 			case 700:
-				nextTreeNode(plantsCompare('l', 2));
+				nextTreeNode(compare('l', 2, 'p'));
 				break;
 			case 800:
-				nextTreeNode(plantsCompare('r', 2));
+				nextTreeNode(compare('r', 2, 'p'));
 				break;
 			case 900:
-				nextTreeNode(herbivoreCompare('u', 1));
+				nextTreeNode(compare('u', 1, 'h'));
 				break;
 			case 1000:
-				nextTreeNode(herbivoreCompare('d', 1));
+				nextTreeNode(compare('d', 1, 'h'));
 				break;
 			case 1100:
-				nextTreeNode(herbivoreCompare('l', 1));
+				nextTreeNode(compare('l', 1, 'h'));
 				break;
 			case 1200:
-				nextTreeNode(herbivoreCompare('r', 1));
+				nextTreeNode(compare('r', 1, 'h'));
 				break;
 			case 1300:
-				nextTreeNode(herbivoreCompare('u', 2));
+				nextTreeNode(compare('u', 2, 'h'));
 				break;
 			case 1400:
-				nextTreeNode(herbivoreCompare('d', 2));
+				nextTreeNode(compare('d', 2, 'h'));
 				break;
 			case 1500:
-				nextTreeNode(herbivoreCompare('l', 2));
+				nextTreeNode(compare('l', 2, 'h'));
 				break;
 			case 1600:
-				nextTreeNode(herbivoreCompare('r', 2));
+				nextTreeNode(compare('r', 2, 'h'));
 				break;
 			case 1700:
 				nextTreeNode(energy > energyThreshold);
@@ -365,28 +376,54 @@ bool Creature::update(){
 				nextTreeNode(worldMap->isCellFree(mapX - 1, mapY));
 				break;
 			case 2400:
-				nextTreeNode(carnivoreCompare('u', 1));
+				//compare carnivores
+				nextTreeNode(compare('u', 1, 'c'));
 				break;
 			case 2500:
-				nextTreeNode(carnivoreCompare('d', 1));
+				nextTreeNode(compare('d', 1, 'c'));
 				break;
 			case 2600:
-				nextTreeNode(carnivoreCompare('l', 1));
+				nextTreeNode(compare('l', 1, 'c'));
 				break;
 			case 2700:
-				nextTreeNode(carnivoreCompare('r', 1));
+				nextTreeNode(compare('r', 1, 'c'));
 				break;
 			case 2800:
-				nextTreeNode(carnivoreCompare('u', 2));
+				nextTreeNode(compare('u', 2, 'c'));
 				break;
 			case 2900:
-				nextTreeNode(carnivoreCompare('d', 2));
+				nextTreeNode(compare('d', 2, 'c'));
 				break;
 			case 3000:
-				nextTreeNode(carnivoreCompare('l', 2));
+				nextTreeNode(compare('l', 2, 'c'));
 				break;
 			case 3100:
-				nextTreeNode(carnivoreCompare('r', 2));
+				nextTreeNode(compare('r', 2, 'c'));
+				break;
+			case 3200:
+				//compare carcasses
+				nextTreeNode(compare('u', 1, 'b'));
+				break;
+			case 3300:
+				nextTreeNode(compare('d', 1, 'b'));
+				break;
+			case 3400:
+				nextTreeNode(compare('l', 1, 'b'));
+				break;
+			case 3500:
+				nextTreeNode(compare('r', 1, 'b'));
+				break;
+			case 3600:
+				nextTreeNode(compare('u', 2, 'b'));
+				break;
+			case 3700:
+				nextTreeNode(compare('d', 2, 'b'));
+				break;
+			case 3800:
+				nextTreeNode(compare('l', 2, 'b'));
+				break;
+			case 3900:
+				nextTreeNode(compare('r', 2, 'b'));
 				break;
 				/*
 				case 1800:
@@ -408,7 +445,7 @@ bool Creature::update(){
 		}
 		//TODO - check if creature has < 0 energy and therefore dead, if so clean up and delete leave corpse with energy based on mass and energy at death if killed by predators
 		// if dead return false
-		if (energy < 0) {
+		if (energy < 0.005 * maxEnergy) {
 			alive = false;
 		}
 		if (RANDOM_NORMALISED_FLOAT < age * CHANCE_OF_DEATH) {
@@ -502,7 +539,7 @@ void Creature::updateCreatureVariables(){
 		energy -= massGained * ENERGY_TO_MASS_CONST;
 	}
 	
-	movementCost = mass * MOVEMENT_COST_CONST; //increse exponentially with mass
+	movementCost = mass * MOVEMENT_COST_CONST; //increse exponentially (linearly?) with mass
 	
 	if (mass / maxMass > 0.8f){
 		mature = true;
@@ -514,22 +551,45 @@ void Creature::updateCreatureVariables(){
 	//defense = MAX_DEFENSE/(mass*mass);//increases exponentially with mass 
 	maxEnergy = mass * MAX_ENERGY_CONST; //dependant on mass, increase linearly with mass? - set this quite high i think
 	if (energy > maxEnergy) {
+		float difference = energy - maxEnergy;
 		energy = maxEnergy;
+		expendedEnergy += difference;
 	}
 	
 	age++;
+	ticksSinceShit++;
+	if (ticksSinceShit > 15) {
+		ticksSinceShit = 0;
+		worldMap->addNutrients(mapX, mapY, expendedEnergy);
+		expendedEnergy = 0;
+	}
 }
 
 void Creature::takeAction(){
 	actionTaken = true;
-	if (!carnivore) {
-		energy += worldMap->eatCell(mapX, mapY, mass / MAX_MAX_MASS);
+	if (!carnivore && energy < maxEnergy) {
+		energy = energy + worldMap->eatCell(mapX, mapY, mass / MAX_MAX_MASS);
 	}
 	//TODO - maybe move this to the end of the update and have happen every update not just when action takes?
 	lookedAround = false;
 	//reset the current tree node bounds to the whole tree
 	currentTreeNodeStart = 0;
 	currentTreeNodeEnd = decisionTreeLength - 1;
+}
+
+void Creature::addToNearby(int index, int* weights, int weightsIndex, MapCell mapCell) {
+	//check cell contents
+	plantsNearby[index] = plantsNearby[index] + weights[weightsIndex] * mapCell.plantValue;
+	carcassNearby[index] = carcassNearby[index] + weights[weightsIndex] * mapCell.carcass;
+	if (mapCell.creature != NULL) {
+		if (mapCell.creature->isCarnivore()) {
+			carnivoreNearby[index] += weights[weightsIndex];
+		}
+		else {
+			herbivoreNearby[index] += weights[weightsIndex];
+		}
+	}
+	//friendlyNearby[0]++;
 }
 
 void Creature::lookAround() {
@@ -574,122 +634,35 @@ void Creature::lookAround() {
 		plantsNearby[i] = 0;
 		carnivoreNearby[i] = 0;
 		herbivoreNearby[i] = 0;
+		carcassNearby[i] = 0;
 	}
 
 	//
 	int weightsIndex = 0;
+	int min, max;
+	int* weights = NULL;
 	if (carnivore) {
-		for (int y = mapY - 10; y < mapY + 11; y++) {
-			for (int x = mapX - 10; x < mapX + 11; x++) {
-				MapCell mapCell = worldMap->getCell(x, y);
-				if (y > mapY) {
-					//check cell contents
-					plantsNearby[0] += carnivoreWeights[weightsIndex] * mapCell.plantValue;
-					if (mapCell.creature != NULL) {
-						if (mapCell.creature->isCarnivore()) {
-							carnivoreNearby[0] += carnivoreWeights[weightsIndex];
-						}
-						else {
-							herbivoreNearby[0] += carnivoreWeights[weightsIndex];
-						}
-					}
-					//friendlyNearby[0]++;
-				}
-				if (y < mapY) {
-					plantsNearby[1] += carnivoreWeights[weightsIndex] * mapCell.plantValue;
-					if (mapCell.creature != NULL) {
-						if (mapCell.creature->isCarnivore()) {
-							carnivoreNearby[1] += carnivoreWeights[weightsIndex];
-						}
-						else {
-							herbivoreNearby[1] += carnivoreWeights[weightsIndex];
-						}
-					}
-					//friendlyNearby[1]++;
-				}
-				if (x < mapX) {
-					plantsNearby[2] += carnivoreWeights[weightsIndex] * mapCell.plantValue;
-					if (mapCell.creature != NULL) {
-						if (mapCell.creature->isCarnivore()) {
-							carnivoreNearby[2] += carnivoreWeights[weightsIndex];
-						}
-						else {
-							herbivoreNearby[2] += carnivoreWeights[weightsIndex];
-						}
-					}
-					//friendlyNearby[2]++;
-				}
-				if (x > mapX) {
-					plantsNearby[3] += carnivoreWeights[weightsIndex] * mapCell.plantValue;
-					if (mapCell.creature != NULL) {
-						if (mapCell.creature->isCarnivore()) {
-							carnivoreNearby[3] += carnivoreWeights[weightsIndex];
-						}
-						else {
-							herbivoreNearby[3] += carnivoreWeights[weightsIndex];
-						}
-					}
-					//friendlyNearby[3]++;
-				}
-				weightsIndex++;
-			}
-		}
+		min = -10;
+		max = 11;
+		weights = carnivoreWeights;
 	}
 	else {
-		for (int y = mapY - 2; y < mapY + 3; y++) {
-			for (int x = mapX - 2; x < mapX + 3; x++) {
-				MapCell mapCell = worldMap->getCell(x, y);
-				if (y > mapY) {
-					//check cell contents
-					plantsNearby[0] += herbivoreWeights[weightsIndex] * mapCell.plantValue;
-					if (mapCell.creature != NULL) {
-						if (mapCell.creature->isCarnivore()) {
-							carnivoreNearby[0] += herbivoreWeights[weightsIndex];
-						}
-						else {
-							herbivoreNearby[0] += herbivoreWeights[weightsIndex];
-						}
-					}
-					//friendlyNearby[0]++;
-				}
-				if (y < mapY) {
-					plantsNearby[1] += herbivoreWeights[weightsIndex] * mapCell.plantValue;
-					if (mapCell.creature != NULL) {
-						if (mapCell.creature->isCarnivore()) {
-							carnivoreNearby[1] += herbivoreWeights[weightsIndex];
-						}
-						else {
-							herbivoreNearby[1] += herbivoreWeights[weightsIndex];
-						}
-					}
-					//friendlyNearby[1]++;
-				}
-				if (x < mapX) {
-					plantsNearby[2] += herbivoreWeights[weightsIndex] * mapCell.plantValue;
-					if (mapCell.creature != NULL) {
-						if (mapCell.creature->isCarnivore()) {
-							carnivoreNearby[2] += herbivoreWeights[weightsIndex];
-						}
-						else {
-							herbivoreNearby[2] += herbivoreWeights[weightsIndex];
-						}
-					}
-					//friendlyNearby[2]++;
-				}
-				if (x > mapX) {
-					plantsNearby[3] += herbivoreWeights[weightsIndex] * mapCell.plantValue;
-					if (mapCell.creature != NULL) {
-						if (mapCell.creature->isCarnivore()) {
-							carnivoreNearby[3] += herbivoreWeights[weightsIndex];
-						}
-						else {
-							herbivoreNearby[3] += herbivoreWeights[weightsIndex];
-						}
-					}
-					//friendlyNearby[3]++;
-				}
-				weightsIndex++;
-			}
+		min = -2;
+		max = 3;
+		weights = herbivoreWeights;
+	}
+	for (int y = mapY + min; y < mapY + max; y++) {
+		for (int x = mapX + min; x < mapX + max; x++) {
+			MapCell mapCell = worldMap->getCell(x, y);
+			if (y > mapY)
+				addToNearby(0, weights, weightsIndex, mapCell);
+			if (y < mapY)
+				addToNearby(1, weights, weightsIndex, mapCell);
+			if (x < mapX)
+				addToNearby(2, weights, weightsIndex, mapCell);
+			if (x > mapX)
+				addToNearby(3, weights, weightsIndex, mapCell);
+			weightsIndex++;
 		}
 	}
 	//rank food carnivores atc
@@ -709,103 +682,58 @@ void Creature::lookAround() {
 			if (carnivoreNearby[j] < carnivoreNearby[i]) {
 				carnivoreRank[i] --;
 			}
+			if (carcassNearby[j] < carcassNearby[i]) {
+				carcassRank[i] --;
+			}
+			
 		}
 	}
 	lookedAround = true;
 }
 
-bool Creature::plantsCompare(char dir, int rank){
-	//this function could be called multiple times in a decision tree, but the food distribution will always be the same
+bool Creature::compare(char dir, int rank, char toCompare) {
+	//this function could be called multiple times in a decision tree, but the distribution compared will always be the same
 	// so check to see if it has been done already
 	//TODO - should i move this into a different funtion? with a moves since looked check and have it be an action to look?
 	// also for looking conasdier making the looking weights different for each thing looked at and have them evolve with the creature, also consider 
 	//doing this for the look distance
-	if (!lookedAround){
-		lookAround();
-	}
-	switch (dir){
-		//
-	case 'u':
-		if (plantsRank[0] == rank) {
-			return true;
-		}
-		break;
-	case 'd':
-		if (plantsRank[1] == rank) {
-			return true;
-		}
-		break;
-	case 'l':
-		if (plantsRank[2] == rank) {
-			return true;
-		}
-		break;
-	case 'r':
-		if (plantsRank[3] == rank) {
-			return true;
-		}
-		break;
-	}
-	return false;
-}
-
-bool Creature::herbivoreCompare(char dir, int rank) {
-	//this function could be called multiple times in a decision tree, but the food distribution will always be the same
-	// so check to see if it has been done already
 	if (!lookedAround) {
 		lookAround();
+	}
+	int* comparing = NULL;
+	switch (toCompare) {
+	case 'p' :
+		comparing = plantsRank;
+		break;
+	case 'h':
+		comparing = herbivoreRank;
+		break;
+	case 'c':
+		comparing = carnivoreRank;
+		break;
+	case 'b':
+		comparing = carcassRank;
+		break;
 	}
 	switch (dir) {
 		//
 	case 'u':
-		if (herbivoreRank[0] == rank) {
+		if (comparing[0] == rank) {
 			return true;
 		}
 		break;
 	case 'd':
-		if (herbivoreRank[1] == rank) {
+		if (comparing[1] == rank) {
 			return true;
 		}
 		break;
 	case 'l':
-		if (herbivoreRank[2] == rank) {
+		if (comparing[2] == rank) {
 			return true;
 		}
 		break;
 	case 'r':
-		if (herbivoreRank[3] == rank) {
-			return true;
-		}
-		break;
-	}
-	return false;
-}
-
-bool Creature::carnivoreCompare(char dir, int rank) {
-	//this function could be called multiple times in a decision tree, but the food distribution will always be the same
-	// so check to see if it has been done already
-	if (!lookedAround) {
-		lookAround();
-	}
-	switch (dir) {
-		//
-	case 'u':
-		if (carnivoreRank[0] == rank) {
-			return true;
-		}
-		break;
-	case 'd':
-		if (carnivoreRank[1] == rank) {
-			return true;
-		}
-		break;
-	case 'l':
-		if (carnivoreRank[2] == rank) {
-			return true;
-		}
-		break;
-	case 'r':
-		if (carnivoreRank[3] == rank) {
+		if (comparing[3] == rank) {
 			return true;
 		}
 		break;
@@ -907,6 +835,22 @@ void Creature::checkVariablesWithinBounds(){
 	else if (lengthOfPregnancy > MAX_LENGTH_OF_PREGNANCY){
 		lengthOfPregnancy = MAX_LENGTH_OF_PREGNANCY;
 	}
+}
+
+float Creature::getTotalEnergy() {
+	float totEnergy = 0;
+	if (baby[0])
+		totEnergy += baby[0]->getTotalEnergy();
+	return totEnergy + energy + expendedEnergy + (mass * ENERGY_TO_MASS_CONST);
+}
+
+float Creature::kill() {
+	alive = false;
+	float returnEnergy = energy + expendedEnergy + (mass * ENERGY_TO_MASS_CONST);
+	energy = 0.0f;
+	expendedEnergy = 0.0f;
+	mass = 0.0f;
+	return returnEnergy;
 }
 
 void Creature::setCreatureID() {
@@ -1084,8 +1028,8 @@ void Creature::replicate() {
 	//TODO - doubled max energy constant (from 0.75) and changed the 3 values below. increased max plant energy from 1 to 1.5
 	float babyMass = mass * 0.30f;//0.35
 	float babyEnergy = energy * 0.30f;
-	mass = mass * 0.70f;//0.8
-	energy = energy * 0.70f;//0.8
+	mass = mass - babyMass;//0.8
+	energy = energy  - babyEnergy;//0.8
 	float babyEnergyThreshold = energyThreshold + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * energyThreshold;
 	float babyGrowthRate = growthRate + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * growthRate;
 	int babyNumOffspringRange = numOffspringRange + (xor128() % 3) - 1;
@@ -1104,7 +1048,7 @@ void Creature::replicate() {
 bool Creature::isSameSpecies(float* statsToCheck) {
 	//check if the other creature falls within the bounds of what is considered to be the same species
 	//TODO possibly add more here?
-	float speciesVar = 0.03;
+	float speciesVar = 0.03f;
 
 	if (statsToCheck[0] != carnivore) {
 		return false;

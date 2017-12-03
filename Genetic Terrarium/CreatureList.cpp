@@ -23,6 +23,7 @@ CreatureList::CreatureList(int size) {
 //the list is the access point for the creatures it contains, must go to each node in the list and delete the creature it contains and the node itself
 //in order to free up the momory the list takes up
 CreatureList::~CreatureList() {
+	//TODO deleting this and creating a new one crashes everything if the seed is different.
 	while (root != NULL) {
 		node* temp = root->next;
 		delete root->creature;

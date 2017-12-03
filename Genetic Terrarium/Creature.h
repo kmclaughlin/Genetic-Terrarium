@@ -20,7 +20,7 @@ public:
 
 	bool update();
 	bool isActive() { return active; };
-	void kill() { alive = false; };
+	float kill(); 
 	bool isAlive() { return alive; };
 	/*add iscarnivore check and carnivore bool to craeture as a var, or decide how herbs and carns differ and built the separate classes
 		finish off the creature lookaround and foodcompare functions may also consider moving without eating, need move actions and eat actions,
@@ -41,6 +41,7 @@ public:
 	int getAge() { return age; };
 	int getGeneration() { return generation; };
 	bool isSameSpecies(float* statsToCheck);
+	float getTotalEnergy();
 
 	static WorldMap* worldMap;
 	static CreatureList* creatureList;
@@ -70,6 +71,7 @@ protected:
 	//need a no action action.
 	bool alive;
 	float energy;
+	float expendedEnergy;
 	float maxEnergy; //dependant on mass
 	float energyThreshold; //value that tree can make decisions on compared to current energy
 	//maxMass dictates movement energy cost and defense score, higher mass takes longer to get to maturity, takes energy to grow
@@ -78,6 +80,7 @@ protected:
 	float maxMass;
 	//could have body mass and energy mass, energy mass fluctuates with energy level, body mass is not a function of energy, though it determines
 	// max energy
+	int ticksSinceShit;
 	float mass;
 	float movementCost; //increse exponentially with mass
 	float defense; //decreases exponentially with mass
@@ -97,6 +100,7 @@ protected:
 
 	// functional variables
 	float plantsNearby[4];
+	float carcassNearby[4];
 	int carnivoreNearby[4];
 	int friendlyNearby[4];
 	int herbivoreNearby[4];
@@ -105,6 +109,7 @@ protected:
 	int carnivoreRank[4];
 	int friendlyRank[4];
 	int herbivoreRank[4];
+	int carcassRank[4];
 	// fights nearby
 	// carcasses nearby
 	// injured nearby
@@ -126,10 +131,8 @@ protected:
 	void updateCreatureVariables();
 
 	void lookAround();
-
-	bool plantsCompare(char dir, int rank);
-	bool herbivoreCompare(char dir, int rank);
-	bool carnivoreCompare(char dir, int rank);
+	void addToNearby(int index, int* weights, int weightsIndex, MapCell mapCell);
+	bool compare(char dir, int rank, char toCompare);
 	
 	void nextTreeNode(bool lastDecision);
 	bool isOutcomeAction(bool decision);

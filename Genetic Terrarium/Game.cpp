@@ -25,6 +25,9 @@ int Game::mouseX = -1;
 int Game::mouseY = -1;
 float* Game::selectedSpecies = NULL;
 bool Game::selectSpecies = false;
+bool Game::showNutrients = false;
+bool Game::showGrass = true;
+bool Game::showCorpses = false;
 
 void Game::Start(int screenX, int screenY){
 	/*start() should only be run once when the program is launched, therefore we
@@ -71,6 +74,7 @@ void Game::GameLoop(){
 	sf::Event currentEvent;
 	clock_t startTime1 = clock();
 	clock_t startTime2 = clock();
+	float totalEnergy = 0;
 	
 	//update the game state
 	if (_gameState == Game::Running && clock() - runSpeedLimiter  > 20*(25 - speedFactor)) {
@@ -103,7 +107,7 @@ void Game::GameLoop(){
 			creatureList->collectCreatureStats();
 			statTimer = clock();
 		}
-		//cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2 << endl;
+		cout << "UPDATE:  Resources: " << startTime2 - startTime1 << "  Creatures: " << clock() - startTime2;
 		//Update the screen
 		startTime1 = clock();
 		float maxEnergy = worldMap->getMaxEnergy();
@@ -112,15 +116,55 @@ void Game::GameLoop(){
 			for (int x = 0; x < width; x++)
 			{
 				MapCell mapCell = worldMap->getCell(x, y);
+				//totalEnergy += mapCell.nutrientValue + mapCell.plantValue + mapCell.carcass;
+				//if (mapCell.creature) {
+				//	totalEnergy += mapCell.creature->getTotalEnergy();
+				//}
 				if (mapCell.creature == NULL) {
-					pixels[(y * width + x) * 4] = 0; // R
-					pixels[(y * width + x) * 4 + 1] = mapCell.plantValue * 255 / maxEnergy; // G
-					pixels[(y * width + x) * 4 + 2] = 0; // B
-					if (selectedSpecies == NULL) {
-						pixels[(y * width + x) * 4 + 3] = 255; // A
+					if (showNutrients) {
+						pixels[(y * width + x) * 4] = mapCell.nutrientValue / (mapCell.nutrientValue + 10) * 250; // R
+						pixels[(y * width + x) * 4 + 1] = mapCell.nutrientValue / (mapCell.nutrientValue + 10) * 128; // G
+						pixels[(y * width + x) * 4 + 2] = mapCell.nutrientValue / (mapCell.nutrientValue + 10) * 114; // B
+						if (selectedSpecies == NULL) {
+							pixels[(y * width + x) * 4 + 3] = 255; // A
+						}
+						else {
+							pixels[(y * width + x) * 4 + 3] = 125; // A
+						}
+					}
+					//show grass
+					else if (showGrass){
+						pixels[(y * width + x) * 4] = 0; // R
+						pixels[(y * width + x) * 4 + 1] = mapCell.plantValue * 255 / maxEnergy; // G
+						pixels[(y * width + x) * 4 + 2] = 0; // B
+						if (selectedSpecies == NULL) {
+							pixels[(y * width + x) * 4 + 3] = 255; // A
+						}
+						else {
+							pixels[(y * width + x) * 4 + 3] = 125; // A
+						}
 					}
 					else {
-						pixels[(y * width + x) * 4 + 3] = 125; // A
+						pixels[(y * width + x) * 4] = 0; // R
+						pixels[(y * width + x) * 4 + 1] = 0; // G
+						pixels[(y * width + x) * 4 + 2] = 0; // B
+						if (selectedSpecies == NULL) {
+							pixels[(y * width + x) * 4 + 3] = 255; // A
+						}
+						else {
+							pixels[(y * width + x) * 4 + 3] = 125; // A
+						}
+					}
+					if (showCorpses && mapCell.carcass > 0) {
+						pixels[(y * width + x) * 4] = mapCell.carcass / (mapCell.carcass + 0.2) * 200; // R
+						pixels[(y * width + x) * 4 + 1] = mapCell.carcass / (mapCell.carcass + 0.2) * 255; // G
+						pixels[(y * width + x) * 4 + 2] = mapCell.carcass / (mapCell.carcass + 0.2) * 100; // B
+						if (selectedSpecies == NULL) {
+							pixels[(y * width + x) * 4 + 3] = 255; // A
+						}
+						else {
+							pixels[(y * width + x) * 4 + 3] = 125; // A
+						}
 					}
 				}
 				else { //if (creatureMap->getCell(x, y) != NULL) {
@@ -145,8 +189,8 @@ void Game::GameLoop(){
 
 	_mainWindow.clear();
 	_mainWindow.draw(sprite);
-	//if (_gameState == Game::Running)
-		//cout << "   screen: " << clock() - startTime1  << endl;
+	if (_gameState == Game::Running)
+		cout << "   screen: " << (clock() - startTime1) << endl;
 	gui.draw(); // Draw all widgets
 	_mainWindow.display();
 
@@ -178,6 +222,18 @@ void Game::GameLoop(){
 			//key.code 55 is '+'
 			else if (currentEvent.key.code == 55) {
 				zoomView(1);
+			}
+			//key.code 27 is '1'
+			if (currentEvent.key.code == 27) {
+				showGrass = !showGrass;
+			}
+			//key.code 28 is '2'
+			if (currentEvent.key.code == 28) {
+				showNutrients = !showNutrients;
+			}
+			//key.code 29 is '3'
+			if (currentEvent.key.code == 29) {
+				showCorpses = !showCorpses;
 			}
 		}
 		// catch the resize events

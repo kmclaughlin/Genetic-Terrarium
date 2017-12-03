@@ -9,6 +9,9 @@ class Creature;
 
 //cell struct to hold all the information needed for each cell of the map
 struct MapCell {
+	float growthMultiplier = NULL;
+	float nutrientValue = NULL;
+	float carcass = NULL;
 	float plantValue = NULL;
 	Creature* creature = NULL;;
 };
@@ -30,6 +33,8 @@ public:
 	bool addCreature(Creature* creature, int x, int y);
 	bool moveCreature(int currentX, int currentY, char dir);
 	void removeCreature(int x, int y);
+	void addCorpse(int x, int y, float energy) { map[y * width + x].carcass += energy; };
+	void addNutrients(int x, int y, float energy) { map[y * width + x].nutrientValue += energy; };
 
 	//void addToPixelMap(sf::Uint8* pixels, int x, int y);
 
@@ -40,7 +45,11 @@ private:
 	const float GROW_CHANCE = 0.05f;//0.1f;
 	const float SEEDLING_SPAWN_CHANCE = 0.01f;
 	const float MAX_PLANT_ENERGY = 1.5f;
-	const float SEEDLING_ENERGY = 0.1f;
+	const float SEEDLING_ENERGY = 0.2f;
+	const float GROWTH_FACTOR = 1;
+
+	float calculateGrowthFactor(float nutrientValue) { return nutrientValue / (nutrientValue + GROWTH_FACTOR); }
+	bool inBounds(int x, int y);
 };
 
 #endif

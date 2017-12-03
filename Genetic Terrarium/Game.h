@@ -53,6 +53,9 @@ private:
 	static int mouseY;
 	static float* selectedSpecies;
 	static bool selectSpecies;
+	static bool showNutrients;
+	static bool showGrass;
+	static bool showCorpses;
 };
 
 #endif

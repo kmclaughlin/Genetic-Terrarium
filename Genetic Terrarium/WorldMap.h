@@ -24,16 +24,17 @@ public:
 	~WorldMap();
 
 	//public methods
-	void updatePlants();
+	void updateMap();
 	float getMaxEnergy() { return MAX_PLANT_ENERGY; };
 	MapCell getCell(int x, int y);	//returns cell contents
-	float eatCell(int x, int y, float eatPercentage); //eats the percentage of cell energy specified 
+	float eatPlant(int x, int y, float eatPercentage); //eats the percentage of plant energy specified 
+	float eatCarcass(int x, int y, float eatPercentage); //eats the percentage of carcass energy specified 
 
 	bool isCellFree(int x, int y);
 	bool addCreature(Creature* creature, int x, int y);
 	bool moveCreature(int currentX, int currentY, char dir);
 	void removeCreature(int x, int y);
-	void addCorpse(int x, int y, float energy) { map[y * width + x].carcass += energy; };
+	void addCarcass(int x, int y, float energy) { map[y * width + x].carcass += energy; };
 	void addNutrients(int x, int y, float energy) { map[y * width + x].nutrientValue += energy; };
 
 	//void addToPixelMap(sf::Uint8* pixels, int x, int y);
@@ -47,6 +48,7 @@ private:
 	const float MAX_PLANT_ENERGY = 1.5f;
 	const float SEEDLING_ENERGY = 0.2f;
 	const float GROWTH_FACTOR = 1;
+	const float CARCASS_DECAY_RATE = 0.05f;
 
 	float calculateGrowthFactor(float nutrientValue) { return nutrientValue / (nutrientValue + GROWTH_FACTOR); }
 	bool inBounds(int x, int y);

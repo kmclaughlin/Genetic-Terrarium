@@ -44,7 +44,7 @@ MapCell WorldMap::getCell(int x, int y) {
 	}
 }
 
-float WorldMap::eatCell(int x, int y, float eatPercentage) {
+float WorldMap::eatPlant(int x, int y, float eatPercentage) {
 	//don't neeed to bounds check because the thing doing the eating must be inside the bounds on the resource map
 	//may be poor practice though to make that assumption, so consider adding boundss check with a todo to remove for optimisation
 	//The amount of energy that is trying to be eaten
@@ -60,7 +60,16 @@ float WorldMap::eatCell(int x, int y, float eatPercentage) {
 	return returnValue;
 }
 
-void WorldMap::updatePlants() {
+float WorldMap::eatCarcass(int x, int y, float eatPercentage) {
+	//don't neeed to bounds check because the thing doing the eating must be inside the bounds on the resource map
+	//may be poor practice though to make that assumption, so consider adding boundss check with a todo to remove for optimisation
+	//The amount of energy that is trying to be eaten
+	float returnValue = map[y * width + x].carcass * eatPercentage;
+	map[y * width + x].carcass -= returnValue;
+	return returnValue;
+}
+
+void WorldMap::updateMap() {
 	//update each cell in the resource map
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
@@ -98,9 +107,9 @@ void WorldMap::updatePlants() {
 					map[newY * width + newX].growthMultiplier = calculateGrowthFactor(map[newY * width + newX].nutrientValue);
 				}
 			}
-			//have corpses decompose
+			//have carcasses decompose
 			if (randomNumber < 0.3 && map[y * width + x].carcass > 0) {
-				float decay = map[y * width + x].carcass * 0.05f;
+				float decay = map[y * width + x].carcass * CARCASS_DECAY_RATE;
 				map[y * width + x].nutrientValue += decay;
 				map[y * width + x].carcass -= decay;
 

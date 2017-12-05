@@ -67,8 +67,7 @@ Creature::~Creature(){
 	for (int i = 0; i < 1; i++) {
 		if (baby[i] != NULL) {
 			//the creature is being deleted - should its unborn babies also be deleted?
-			baby[i]->kill();
-			baby[i] = NULL;
+			delete baby[i];
 		}
 	}
 }
@@ -155,9 +154,9 @@ void Creature::setCreatureAttributes(Creature* creature) {
 	energy = maxEnergy * START_ENERGY_PERCENTAGE;
 	expendedEnergy = 0;
 	if (carnivore) {
-		energy = maxEnergy * START_ENERGY_PERCENTAGE * 20;
+		energy = maxEnergy * START_ENERGY_PERCENTAGE * 10;
 	}
-
+	
 	//curentTreeNode holds the current decision sub node, which at this point is the whole tree, needs to be cpoied
 	currentTreeNodeStart = 0;
 	currentTreeNodeEnd = decisionTreeLength - 1;
@@ -165,296 +164,305 @@ void Creature::setCreatureAttributes(Creature* creature) {
 
 bool Creature::update(){
 	decisionsBeforeAction = -1;
-	bool returnValue = true;
-	if (!alive) {
-		//remove the creature from the craeture map
-		worldMap->removeCreature(mapX, mapY);
-		for (int i = 0; i < 1; i++) {
-			if (baby[i] != NULL) {
-				expendedEnergy += baby[i]->kill();
-				baby[i] = NULL;
-			}
-		}
-		worldMap->addCorpse(mapX, mapY, expendedEnergy + energy + (mass * ENERGY_TO_MASS_CONST));
-		energy = 0.0f;
-		expendedEnergy = 0.0f;
-		mass = 0.0f;
-		active = false;
-		returnValue = false;
-	}
-	else {
-		//reduce energy every tick regardless of action, it takes energy to live
-		energy -= movementCost;
-		expendedEnergy += movementCost;
-		pregnancyCheck();
+	//reduce energy every tick regardless of action, it takes energy to live
+	energy -= movementCost;
+	expendedEnergy += movementCost;
+	pregnancyCheck();
 
-		//update creature variables
-		updateCreatureVariables();
-		//if pregnant and brought to term babies are born without action?? could just set action taken so long as there is a free adjacent space for them to be born into
-		//consult decision tree, work through each step of the decision tree until an action is made
-		actionTaken = false;
-		//record current time, once time passed exceeds allotted time for 1 cycle return with no action and pick up in same place next tick
-		clock_t startTime = clock();
-		//TODO - to the time limit here properly with microseconds
-		while (!actionTaken) {//&& clock() - startTime < MAX_TIME){
-			switch (decisionTree[currentTreeNodeStart]) {
-				//decisions are 100s, actions < 100
-			case 1:
-				//take no action;
-				//function to reset the decision tree
-				takeAction();
-				break;
-			case 2:
-				//move up
+	//update creature variables
+	updateCreatureVariables();
+	//if pregnant and brought to term babies are born without action?? could just set action taken so long as there is a free adjacent space for them to be born into
+	//consult decision tree, work through each step of the decision tree until an action is made
+	actionTaken = false;
+	//record current time, once time passed exceeds allotted time for 1 cycle return with no action and pick up in same place next tick
+	clock_t startTime = clock();
+	//TODO - to the time limit here properly with microseconds
+	while (!actionTaken) {//&& clock() - startTime < MAX_TIME){
+		switch (decisionTree[currentTreeNodeStart]) {
+			//decisions are 100s, actions < 100
+		case 1:
+			//take no action;
+			//function to reset the decision tree
+			takeAction();
+			break;
+		case 2:
+			//move up
+			if (worldMap->moveCreature(mapX, mapY, 'u')) {
+				mapY++;
+				energy -= movementCost;
+				expendedEnergy += movementCost;
+			}
+			//if the current creature is a carnivore and the target square has a creature in it
+			else if (carnivore && worldMap->getCell(mapX, mapY + 1).creature != NULL){// && !worldMap->getCell(mapX, mapY + 1).creature->isCarnivore()) {
+				//kill the creature then move up
+				worldMap->addCarcass(mapX, mapY + 1, worldMap->getCell(mapX, mapY + 1).creature->kill());
+				//killing takes energy
+				energy -= movementCost;
+				expendedEnergy += movementCost;
 				if (worldMap->moveCreature(mapX, mapY, 'u')) {
 					mapY++;
 					energy -= movementCost;
 					expendedEnergy += movementCost;
 				}
-				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && worldMap->getCell(mapX, mapY + 1).creature != NULL) {//&& !creatureMap->getCell(mapX, mapY + 1)->isCarnivore()) {
-					energy += worldMap->getCell(mapX, mapY + 1).creature->getEnergy();
-					worldMap->getCell(mapX, mapY + 1).creature->kill();
-				}
-				takeAction();
-				break;
-			case 3:
-				//move down
+			}
+			takeAction();
+			break;
+		case 3:
+			//move down
+			if (worldMap->moveCreature(mapX, mapY, 'd')) {
+				mapY--;
+				energy -= movementCost;
+				expendedEnergy += movementCost;
+			}
+			//if the current creature is a carnivore and the target square has a creature in it
+			else if (carnivore && worldMap->getCell(mapX, mapY - 1).creature != NULL) {// && !worldMap->getCell(mapX, mapY - 1).creature->isCarnivore()) {
+				worldMap->addCarcass(mapX, mapY - 1, worldMap->getCell(mapX, mapY - 1).creature->kill());
+				//killing takes energy
+				energy -= movementCost;
+				expendedEnergy += movementCost;
 				if (worldMap->moveCreature(mapX, mapY, 'd')) {
 					mapY--;
 					energy -= movementCost;
 					expendedEnergy += movementCost;
 				}
-				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && worldMap->getCell(mapX, mapY - 1).creature != NULL ){//&& !creatureMap->getCell(mapX, mapY - 1)->isCarnivore()) {
-					energy += worldMap->getCell(mapX, mapY - 1).creature->getEnergy();
-					worldMap->getCell(mapX, mapY - 1).creature->kill();
-				}
-				takeAction();
-				break;
-			case 4:
-				//move left
+			}
+			takeAction();
+			break;
+		case 4:
+			//move left
+			if (worldMap->moveCreature(mapX, mapY, 'l')) {
+				mapX--;
+				energy -= movementCost;
+				expendedEnergy += movementCost;
+			}
+			//if the current creature is a carnivore and the target square has a creature in it
+			else if (carnivore && worldMap->getCell(mapX - 1, mapY).creature != NULL) {// && !worldMap->getCell(mapX - 1, mapY).creature->isCarnivore()) {
+				worldMap->addCarcass(mapX - 1, mapY, worldMap->getCell(mapX - 1, mapY).creature->kill());
+				//killing takes energy
+				energy -= movementCost;
+				expendedEnergy += movementCost;
 				if (worldMap->moveCreature(mapX, mapY, 'l')) {
 					mapX--;
 					energy -= movementCost;
 					expendedEnergy += movementCost;
 				}
-				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && worldMap->getCell(mapX - 1, mapY).creature != NULL) {//&& !creatureMap->getCell(mapX - 1, mapY)->isCarnivore()) {
-					energy += worldMap->getCell(mapX - 1, mapY).creature->getEnergy();
-					worldMap->getCell(mapX - 1, mapY).creature->kill();
-				}
-				takeAction();
-				break;
-			case 5:
-				//move right
+			}
+			takeAction();
+			break;
+		case 5:
+			//move right
+			if (worldMap->moveCreature(mapX, mapY, 'r')) {
+				mapX++;
+				energy -= movementCost;
+				expendedEnergy += movementCost;
+			}
+			//if the current creature is a carnivore and the target square has a creature in it
+			else if (carnivore && worldMap->getCell(mapX + 1, mapY).creature != NULL) {// && !worldMap->getCell(mapX + 1, mapY).creature->isCarnivore()) {
+				worldMap->addCarcass(mapX + 1, mapY, worldMap->getCell(mapX + 1, mapY).creature->kill());
+				//killing takes energy
+				energy -= movementCost;
+				expendedEnergy += movementCost;
 				if (worldMap->moveCreature(mapX, mapY, 'r')) {
 					mapX++;
 					energy -= movementCost;
 					expendedEnergy += movementCost;
 				}
-				//if the current creature is a carnivore and the target square has a creature in it
-				else if (carnivore && worldMap->getCell(mapX + 1, mapY).creature != NULL) {//&& !creatureMap->getCell(mapX + 1, mapY)->isCarnivore()) {
-					energy += worldMap->getCell(mapX + 1, mapY).creature->getEnergy();
-					worldMap->getCell(mapX + 1, mapY).creature->kill();
-				}
-				takeAction();
-				break;
-			case 6:
-				if (!pregnant && mature) {
-					inHeat = true;
-				}
-				takeAction();
-				break;
-				//become in heat
-				/*case 6:
-				//move up and left
-				move('q');
-				takeAction();
-				break;
-				case 7:
-				//move up and right
-				move('e');
-				takeAction();
-				break;
-				case 8:
-				//move down and left
-				move('z');
-				takeAction();
-				break;
-				case 9:
-				//move down and right
-				move('c');
-				takeAction();
-				break;
-				/*
-				case 10:
-				//breed? can become pregnant, move adjacent to mature creature of same species costs 1 movement energy
-				//action to become in heat, and action to leave it?
-				takeAction();
-				break;
-				case 11:
-				fight?
-				takeAction();
-				break;
-				*/
-			case 100:
-				//is there most food in the up direction
-				nextTreeNode(compare('u', 1, 'p'));
-				break;
-			case 200:
-				//is there most food in the down direction
-				nextTreeNode(compare('d', 1, 'p'));
-				break;
-			case 300:
-				//is there most food in the left direction
-				nextTreeNode(compare('l', 1, 'p'));
-				break;
-			case 400:
-				//is there most food in the right direction
-				nextTreeNode(compare('r', 1, 'p'));
-				break;
-			case 500:
-				nextTreeNode(compare('u', 2, 'p'));
-				break;
-			case 600:
-				nextTreeNode(compare('d', 2, 'p'));
-				break;
-			case 700:
-				nextTreeNode(compare('l', 2, 'p'));
-				break;
-			case 800:
-				nextTreeNode(compare('r', 2, 'p'));
-				break;
-			case 900:
-				nextTreeNode(compare('u', 1, 'h'));
-				break;
-			case 1000:
-				nextTreeNode(compare('d', 1, 'h'));
-				break;
-			case 1100:
-				nextTreeNode(compare('l', 1, 'h'));
-				break;
-			case 1200:
-				nextTreeNode(compare('r', 1, 'h'));
-				break;
-			case 1300:
-				nextTreeNode(compare('u', 2, 'h'));
-				break;
-			case 1400:
-				nextTreeNode(compare('d', 2, 'h'));
-				break;
-			case 1500:
-				nextTreeNode(compare('l', 2, 'h'));
-				break;
-			case 1600:
-				nextTreeNode(compare('r', 2, 'h'));
-				break;
-			case 1700:
-				nextTreeNode(energy > energyThreshold);
-				break;
-			case 1800:
-				nextTreeNode(pregnant);
-				break;
-			case 1900:
-				nextTreeNode(mature);
-				break;
-			case 2000:
-				//check if cell up is free
-				nextTreeNode(worldMap->isCellFree(mapX, mapY + 1));
-				break;
-			case 2100:
-				//check if cell down is free
-				nextTreeNode(worldMap->isCellFree(mapX, mapY - 1));
-				break;
-			case 2200:
-				//check if cell left is free
-				nextTreeNode(worldMap->isCellFree(mapX + 1, mapY));
-				break;
-			case 2300:
-				//check if cell right is free
-				nextTreeNode(worldMap->isCellFree(mapX - 1, mapY));
-				break;
-			case 2400:
-				//compare carnivores
-				nextTreeNode(compare('u', 1, 'c'));
-				break;
-			case 2500:
-				nextTreeNode(compare('d', 1, 'c'));
-				break;
-			case 2600:
-				nextTreeNode(compare('l', 1, 'c'));
-				break;
-			case 2700:
-				nextTreeNode(compare('r', 1, 'c'));
-				break;
-			case 2800:
-				nextTreeNode(compare('u', 2, 'c'));
-				break;
-			case 2900:
-				nextTreeNode(compare('d', 2, 'c'));
-				break;
-			case 3000:
-				nextTreeNode(compare('l', 2, 'c'));
-				break;
-			case 3100:
-				nextTreeNode(compare('r', 2, 'c'));
-				break;
-			case 3200:
-				//compare carcasses
-				nextTreeNode(compare('u', 1, 'b'));
-				break;
-			case 3300:
-				nextTreeNode(compare('d', 1, 'b'));
-				break;
-			case 3400:
-				nextTreeNode(compare('l', 1, 'b'));
-				break;
-			case 3500:
-				nextTreeNode(compare('r', 1, 'b'));
-				break;
-			case 3600:
-				nextTreeNode(compare('u', 2, 'b'));
-				break;
-			case 3700:
-				nextTreeNode(compare('d', 2, 'b'));
-				break;
-			case 3800:
-				nextTreeNode(compare('l', 2, 'b'));
-				break;
-			case 3900:
-				nextTreeNode(compare('r', 2, 'b'));
-				break;
-				/*
-				case 1800:
-				nextTreeNode(inHeat);
-				break;
-				is in heat
-				if pregnant
-				if more food, predators, sameSpecies up, right left down
-				if energy > energy threshold
-				if mature
-				if cell is free up down left right
-				if
-				*/
-			default:
-				//should never get here, log an error
-				cout << "Error - hit default action - should never happen. " << decisionTree[currentTreeNodeStart] << endl;
 			}
-			decisionsBeforeAction++;
+			takeAction();
+			break;
+		case 6:
+			if (!pregnant && mature) {
+				inHeat = true;
+			}
+			takeAction();
+			break;
+			//become in heat
+			/*case 6:
+			//move up and left
+			move('q');
+			takeAction();
+			break;
+			case 7:
+			//move up and right
+			move('e');
+			takeAction();
+			break;
+			case 8:
+			//move down and left
+			move('z');
+			takeAction();
+			break;
+			case 9:
+			//move down and right
+			move('c');
+			takeAction();
+			break;
+			/*
+			case 10:
+			//breed? can become pregnant, move adjacent to mature creature of same species costs 1 movement energy
+			//action to become in heat, and action to leave it?
+			takeAction();
+			break;
+			case 11:
+			fight?
+			takeAction();
+			break;
+			*/
+		case 100:
+			//is there most food in the up direction
+			nextTreeNode(compare('u', 1, 'p'));
+			break;
+		case 200:
+			//is there most food in the down direction
+			nextTreeNode(compare('d', 1, 'p'));
+			break;
+		case 300:
+			//is there most food in the left direction
+			nextTreeNode(compare('l', 1, 'p'));
+			break;
+		case 400:
+			//is there most food in the right direction
+			nextTreeNode(compare('r', 1, 'p'));
+			break;
+		case 500:
+			nextTreeNode(compare('u', 2, 'p'));
+			break;
+		case 600:
+			nextTreeNode(compare('d', 2, 'p'));
+			break;
+		case 700:
+			nextTreeNode(compare('l', 2, 'p'));
+			break;
+		case 800:
+			nextTreeNode(compare('r', 2, 'p'));
+			break;
+		case 900:
+			nextTreeNode(compare('u', 1, 'h'));
+			break;
+		case 1000:
+			nextTreeNode(compare('d', 1, 'h'));
+			break;
+		case 1100:
+			nextTreeNode(compare('l', 1, 'h'));
+			break;
+		case 1200:
+			nextTreeNode(compare('r', 1, 'h'));
+			break;
+		case 1300:
+			nextTreeNode(compare('u', 2, 'h'));
+			break;
+		case 1400:
+			nextTreeNode(compare('d', 2, 'h'));
+			break;
+		case 1500:
+			nextTreeNode(compare('l', 2, 'h'));
+			break;
+		case 1600:
+			nextTreeNode(compare('r', 2, 'h'));
+			break;
+		case 1700:
+			nextTreeNode(energy > energyThreshold);
+			break;
+		case 1800:
+			nextTreeNode(pregnant);
+			break;
+		case 1900:
+			nextTreeNode(mature);
+			break;
+		case 2000:
+			//check if cell up is free
+			nextTreeNode(worldMap->isCellFree(mapX, mapY + 1));
+			break;
+		case 2100:
+			//check if cell down is free
+			nextTreeNode(worldMap->isCellFree(mapX, mapY - 1));
+			break;
+		case 2200:
+			//check if cell left is free
+			nextTreeNode(worldMap->isCellFree(mapX + 1, mapY));
+			break;
+		case 2300:
+			//check if cell right is free
+			nextTreeNode(worldMap->isCellFree(mapX - 1, mapY));
+			break;
+		case 2400:
+			//compare carnivores
+			nextTreeNode(compare('u', 1, 'c'));
+			break;
+		case 2500:
+			nextTreeNode(compare('d', 1, 'c'));
+			break;
+		case 2600:
+			nextTreeNode(compare('l', 1, 'c'));
+			break;
+		case 2700:
+			nextTreeNode(compare('r', 1, 'c'));
+			break;
+		case 2800:
+			nextTreeNode(compare('u', 2, 'c'));
+			break;
+		case 2900:
+			nextTreeNode(compare('d', 2, 'c'));
+			break;
+		case 3000:
+			nextTreeNode(compare('l', 2, 'c'));
+			break;
+		case 3100:
+			nextTreeNode(compare('r', 2, 'c'));
+			break;
+		case 3200:
+			//compare carcasses
+			nextTreeNode(compare('u', 1, 'b'));
+			break;
+		case 3300:
+			nextTreeNode(compare('d', 1, 'b'));
+			break;
+		case 3400:
+			nextTreeNode(compare('l', 1, 'b'));
+			break;
+		case 3500:
+			nextTreeNode(compare('r', 1, 'b'));
+			break;
+		case 3600:
+			nextTreeNode(compare('u', 2, 'b'));
+			break;
+		case 3700:
+			nextTreeNode(compare('d', 2, 'b'));
+			break;
+		case 3800:
+			nextTreeNode(compare('l', 2, 'b'));
+			break;
+		case 3900:
+			nextTreeNode(compare('r', 2, 'b'));
+			break;
+			/*
+			case 1800:
+			nextTreeNode(inHeat);
+			break;
+			is in heat
+			if pregnant
+			if more food, predators, sameSpecies up, right left down
+			if energy > energy threshold
+			if mature
+			if cell is free up down left right
+			if
+			*/
+		default:
+			//should never get here, log an error
+			cout << "Error - hit default action - should never happen. " << decisionTree[currentTreeNodeStart] << endl;
 		}
-		//TODO - check if creature has < 0 energy and therefore dead, if so clean up and delete leave corpse with energy based on mass and energy at death if killed by predators
-		// if dead return false
-		if (energy < 0.005 * maxEnergy) {
-			alive = false;
-		}
-		if (RANDOM_NORMALISED_FLOAT < age * CHANCE_OF_DEATH) {
-			alive = false;
-		}
-		//check at the start of the next update if the craeture is dead or not
-		returnValue = true;
+		decisionsBeforeAction++;
 	}
-	return returnValue;
+	//TODO - check if creature has < 0 energy and therefore dead, if so clean up and delete leave carcass with energy based on mass and energy at death if killed by predators
+	// if dead return false
+	if (energy < 0.005 * maxEnergy) {
+		worldMap->addCarcass(mapX, mapY, kill());
+	}
+	if (RANDOM_NORMALISED_FLOAT < age * CHANCE_OF_DEATH) {
+		alive = false;
+	}
+	//check at the start of the next update if the craeture is dead or not
+	return alive;
 }
 
 void Creature::nextTreeNode(bool lastDecision){
@@ -568,7 +576,11 @@ void Creature::updateCreatureVariables(){
 void Creature::takeAction(){
 	actionTaken = true;
 	if (!carnivore && energy < maxEnergy) {
-		energy = energy + worldMap->eatCell(mapX, mapY, mass / MAX_MAX_MASS);
+		energy = energy + worldMap->eatPlant(mapX, mapY, mass / MAX_MAX_MASS);
+	}
+	//if carcass in cell eat it
+	else if (carnivore && worldMap->getCell(mapX, mapY).carcass != 0 && energy < maxEnergy) {
+		energy += worldMap->eatCarcass(mapX, mapY, mass / MAX_MAX_MASS);
 	}
 	//TODO - maybe move this to the end of the update and have happen every update not just when action takes?
 	lookedAround = false;
@@ -606,7 +618,15 @@ void Creature::lookAround() {
 								 2, 3, 4, 3, 2,
 								 1, 2, 3, 2, 1 };
 
-	int carnivoreWeights[441] = {  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,
+	int carnivoreWeights[49] = { 1, 2,  4,  8,  4,  2,  1,
+								 2, 4,  8,  16, 8,  4,  2,
+								 4, 8,  16, 32, 16, 8,  4,
+								 8, 16, 32, 0,  32, 16, 8,
+								 4, 8,  16, 32, 16, 8,  4,
+								 2, 4,  8,  16, 8,  4,  2,
+								 1, 2,  4,  8,  4,  2,  1};
+
+	/*int carnivoreWeights[441] = {  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,
 								   2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,
 								   3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,
 								   4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,
@@ -626,7 +646,7 @@ void Creature::lookAround() {
 								   4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,
 								   3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,
 								   2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,
-								   1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1 };
+								   1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1 };*/
 	//reset food animal comparators
 	for (int i = 0; i < 4; i++) {
 		//TODO - change food nearby to a float and have it track energy content not plant maturity, then also add a food in current position comparison
@@ -641,9 +661,9 @@ void Creature::lookAround() {
 	int weightsIndex = 0;
 	int min, max;
 	int* weights = NULL;
-	if (carnivore) {
-		min = -10;
-		max = 11;
+	if (carnivore) { //TODO fix
+		min = -3;
+		max = 4;
 		weights = carnivoreWeights;
 	}
 	else {
@@ -672,18 +692,19 @@ void Creature::lookAround() {
 		plantsRank[i] = 1;
 		herbivoreRank[i] = 1;
 		carnivoreRank[i] = 1;
+		carcassRank[i] = 1;
 		for (int j = 0; j < 4; j++) {
 			if (plantsNearby[i] < plantsNearby[j]) {
 				plantsRank[i] ++;
 			}
-			if (herbivoreNearby[j] < herbivoreNearby[i]) {
-				herbivoreRank[i] --;
+			if (herbivoreNearby[i] < herbivoreNearby[j]) {
+				herbivoreRank[i] ++;
 			}
-			if (carnivoreNearby[j] < carnivoreNearby[i]) {
-				carnivoreRank[i] --;
+			if (carnivoreNearby[i] < carnivoreNearby[j]) {
+				carnivoreRank[i] ++;
 			}
-			if (carcassNearby[j] < carcassNearby[i]) {
-				carcassRank[i] --;
+			if (carcassNearby[i] < carcassNearby[j]) {
+				carcassRank[i] ++;
 			}
 			
 		}
@@ -718,25 +739,13 @@ bool Creature::compare(char dir, int rank, char toCompare) {
 	switch (dir) {
 		//
 	case 'u':
-		if (comparing[0] == rank) {
-			return true;
-		}
-		break;
+		return (comparing[0] == rank);
 	case 'd':
-		if (comparing[1] == rank) {
-			return true;
-		}
-		break;
+		return (comparing[1] == rank);
 	case 'l':
-		if (comparing[2] == rank) {
-			return true;
-		}
-		break;
+		return (comparing[2] == rank);
 	case 'r':
-		if (comparing[3] == rank) {
-			return true;
-		}
-		break;
+		return (comparing[3] == rank);
 	}
 	return false;
 }
@@ -772,7 +781,11 @@ void Creature::randomTree(int length){
 		// of actions is less than the number of decisions (to obey rule 4) then keep filling at random  
 		if (decisions - actions < decisionTreeLength - 2 - i && actions < decisions){
 			if (xor128() % 2 == 0){
-				decisionTree[i] = 1 + xor128() % NUM_OF_ACTIONS;
+				//increase the liklihood of replication in random tree to make morelikely to catch on
+				if (RANDOM_NORMALISED_FLOAT < 0.1)
+					decisionTree[i] = 6;
+				else
+					decisionTree[i] = 1 + xor128() % NUM_OF_ACTIONS;
 				actions++;
 			}
 			else {
@@ -845,11 +858,22 @@ float Creature::getTotalEnergy() {
 }
 
 float Creature::kill() {
-	alive = false;
+	for (int i = 0; i < 1; i++) {
+		if (baby[i] != NULL) {
+			expendedEnergy += baby[i]->kill();
+			baby[i] = NULL;
+		}
+	}
 	float returnEnergy = energy + expendedEnergy + (mass * ENERGY_TO_MASS_CONST);
 	energy = 0.0f;
 	expendedEnergy = 0.0f;
 	mass = 0.0f;
+	if (active) {
+		//remove the creature from the craeture map
+		worldMap->removeCreature(mapX, mapY);
+	}
+	alive = false;
+	active = false;
 	return returnEnergy;
 }
 
@@ -1037,7 +1061,7 @@ void Creature::replicate() {
 	int babyLengthOfPregnancy = lengthOfPregnancy + (xor128() % 5) - 2;
 	bool babyCarnivore = carnivore;
 	//if (RANDOM_NORMALISED_FLOAT < 0.1) {
-		//babyCarnivore = !carnivore;
+	//	babyCarnivore = true;
 	//}
 
 	baby[0] = creatureList->getPoolCreature();

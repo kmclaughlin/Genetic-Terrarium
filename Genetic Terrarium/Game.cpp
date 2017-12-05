@@ -82,7 +82,7 @@ void Game::GameLoop(){
 		runSpeedLimiter = clock();
 
 		startTime1 = clock();
-		worldMap->updatePlants();
+		worldMap->updateMap();
 		startTime2 = clock();
 		creatureList->update();
 		
@@ -234,6 +234,13 @@ void Game::GameLoop(){
 			//key.code 29 is '3'
 			if (currentEvent.key.code == 29) {
 				showCorpses = !showCorpses;
+			}
+
+			if (currentEvent.key.code == 'c' - 'a') {
+				spawnCarnivores(1);
+			}
+			if (currentEvent.key.code == 'h' - 'a') {
+				spawnHerbivores(1);
 			}
 		}
 		// catch the resize events
@@ -446,7 +453,12 @@ void Game::GameInit(){
 	Creature::worldMap = worldMap;
 	Creature::creatureList = creatureList;
 	
-	for (int i = 0; i < numHerbivoreSpecies; i++){
+	spawnHerbivores(numHerbivoreSpecies);
+	spawnCarnivores(numCarnivoreSpecies);
+}
+
+void Game::spawnHerbivores(int numHerbivores) {
+	for (int i = 0; i < numHerbivores; i++) {
 		//creates full random creature to act as the template for a species
 		//it is passed as a variable to the newly created creatures in the  
 		Creature* speciesBase = new Creature(false);
@@ -458,15 +470,15 @@ void Game::GameInit(){
 			<< speciesBase->getNumOffspringMedian() << endl
 			<< speciesBase->getLengthOfPregnancy() << endl
 			<< speciesBase->getCreatureID()[0] << " " << speciesBase->getCreatureID()[1] << " " << speciesBase->getCreatureID()[2] << endl;
-		
+
 		//want to create x num creatures, want to have max 1 creature to 9 cells
 		//find a random spot on the map with a border of 50 pixels around the edge
 		int speciesSpawnX = width / 2;//50 + rand() % (width - 100);
 		int speciesSpawnY = height / 2;//50 + rand() % (height - 100);
-		for (int x = speciesSpawnX - 150; x < speciesSpawnX + 150; x++){
-			for (int y = speciesSpawnY - 100; y < speciesSpawnY + 100; y++){
+		for (int x = speciesSpawnX - 150; x < speciesSpawnX + 150; x++) {
+			for (int y = speciesSpawnY - 100; y < speciesSpawnY + 100; y++) {
 				//with a 1/14 chance put a creature in the cell if the cell is free
-				if (xor128() % 30 < 1 && worldMap->getCell(x, y).creature == NULL){
+				if (xor128() % (30 * numHerbivores) < 1 && worldMap->getCell(x, y).creature == NULL) {
 					//create a creature in the same species as the randomised one
 					Creature* creature = creatureList->getPoolCreature();
 					creature->setCreatureAttributes(speciesBase);
@@ -479,7 +491,10 @@ void Game::GameInit(){
 		}
 		delete speciesBase;
 	}
-	for (int i = 0; i < numCarnivoreSpecies; i++) {
+}
+
+void Game::spawnCarnivores(int numCarnivores) {
+	for (int i = 0; i < numCarnivores; i++) {
 		//creates full random creature to act as the template for a species
 		//it is passed as a variable to the newly created creatures in the  
 		Creature* speciesBase = new Creature(true);
@@ -499,7 +514,7 @@ void Game::GameInit(){
 		for (int x = speciesSpawnX - 250; x < speciesSpawnX + 250; x++) {
 			for (int y = speciesSpawnY - 140; y < speciesSpawnY + 140; y++) {
 				//with a 1/14 chance put a creature in the cell if the cell is free
-				if (xor128() % 60 < 1 && worldMap->getCell(x, y).creature == NULL) {
+				if (xor128() % (100 * numCarnivores) < 1 && worldMap->getCell(x, y).creature == NULL) {
 					//create a creature in the same species as the randomised one
 					Creature* creature = creatureList->getPoolCreature();
 					creature->setCreatureAttributes(speciesBase);

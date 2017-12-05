@@ -24,6 +24,8 @@ private:
 	static void loadCreatures(tgui::TextBox::Ptr path, tgui::TextBox::Ptr filename);
 	static void restartSimulation(tgui::TextBox::Ptr);
 	static void zoomView(int numOfTicks);
+	static void spawnCarnivores(int numCarnivores);
+	static void spawnHerbivores(int numHerbivores);
 
 	static void startStopSimulation(tgui::Button::Ptr startStopButton);
 

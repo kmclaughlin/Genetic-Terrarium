@@ -42,6 +42,7 @@ public:
 	int getGeneration() { return generation; };
 	bool isSameSpecies(float* statsToCheck);
 	float getTotalEnergy();
+	void prepareForPool() { alive = false; active = false; };
 
 	static WorldMap* worldMap;
 	static CreatureList* creatureList;
@@ -135,7 +136,6 @@ protected:
 	bool compare(char dir, int rank, char toCompare);
 	
 	void nextTreeNode(bool lastDecision);
-	bool isOutcomeAction(bool decision);
 
 	void randomTree(int length);
 	void checkVariablesWithinBounds();

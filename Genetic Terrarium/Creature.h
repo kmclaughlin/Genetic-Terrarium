@@ -7,24 +7,24 @@ class CreatureList;
 
 //can creature remember the results of its last food/predator/friendly surroundings check so it can increase efficiency by calling them every other tick, or longer?
 
-class Creature{
+class Creature {
 public:
 	//constructor destructor
 	Creature(float carnivorism);
 	~Creature();
 
-	void setCreatureAttributes(int* tree, int treeLength, float carnivorism, float maxMass, float mass, float energy, float energyThreshold, 
-		 float growthRate, int _generation);
+	void setCreatureAttributes(int* tree, int treeLength, float carnivorism, float maxMass, float mass, float energy, float energyThreshold,
+		float mutationRate, float growthRate, int _generation);
 	void setCreatureAttributes(Creature* creature);
 	void born(int x, int y);
 
 	bool update();
 	bool isActive() { return active; };
-	float kill(); 
+	float kill();
 	bool isAlive() { return alive; };
 	/*add iscarnivore check and carnivore bool to craeture as a var, or decide how herbs and carns differ and built the separate classes
-		finish off the creature lookaround and foodcompare functions may also consider moving without eating, need move actions and eat actions,
-		could help with large herbs eating more of the plant than smaller herbs*/
+	finish off the creature lookaround and foodcompare functions may also consider moving without eating, need move actions and eat actions,
+	could help with large herbs eating more of the plant than smaller herbs*/
 
 	int* getDecisionTree() { return decisionTree; };
 	int getDecisionTreeLength() { return decisionTreeLength; };
@@ -32,6 +32,7 @@ public:
 	float getMaxMass() { return maxMass; };
 	float getEnergy() { return energy; };
 	float getEnergyThreshold() { return energyThreshold; };
+	float getMutationRate() { return mutationRate; };
 	float getGrowthRate() { return growthRate; };
 	int* getCreatureID() { return creatureID; };
 	int getDecisionsBeforeAction() { return decisionsBeforeAction; };
@@ -51,26 +52,26 @@ protected:
 	//it left off in the decision process
 	const int MAX_TIME = 1; //time in milliseconds
 	const float MAX_DEFENSE = 1.0;
-	const float START_ENERGY_PERCENTAGE = 0.75f  * 2.0f/ 10.0f; //maybe 
+	const float START_ENERGY_PERCENTAGE = 0.75f  * 2.0f / 10.0f; //maybe 
 	const float MOVEMENT_COST_CONST = 0.005f;
 	const float MAX_ENERGY_CONST = 0.75f *10.0f;
 	const float ENERGY_TO_MASS_CONST = 0.5;
 	//These may be needed to set random values
 	const float MAX_MAX_MASS = 60.0f;
 	const float MAX_GROWTH_RATE = 0.15f;
+	const float MAX_MUTATION_RATE = 0.95f;
 	//TODO - make this a creature specific variable?
-	const float MUTATION_RATE = 0.8f;// 0.2f;
 	const float CHANCE_OF_DEATH = 0;// .000005f;
-	//variables used to help define the creatures behaviour
-	//need to lose energy every turn based on mass regardless of action, then lose mass based on action ie movement.
-	//need a no action action.
+									//variables used to help define the creatures behaviour
+									//need to lose energy every turn based on mass regardless of action, then lose mass based on action ie movement.
+									//need a no action action.
 	bool alive;
 	float energy;
 	float expendedEnergy;
 	float maxEnergy; //dependant on mass
 	float energyThreshold; //value that tree can make decisions on compared to current energy
-	//maxMass dictates movement energy cost and defense score, higher mass takes longer to get to maturity, takes energy to grow
-	//can have longer pregnancy to have children closer to maturity at birth but takes more energy from mother to grow them all
+						   //maxMass dictates movement energy cost and defense score, higher mass takes longer to get to maturity, takes energy to grow
+						   //can have longer pregnancy to have children closer to maturity at birth but takes more energy from mother to grow them all
 	float maxMass;
 	//could have body mass and energy mass, energy mass fluctuates with energy level, body mass is not a function of energy, though it determines
 	// max energy
@@ -89,6 +90,9 @@ protected:
 	Creature* baby[1];
 	int creatureID[3];
 	float carnivorism;
+	float mutationRate;
+	float mutationRate2;
+	float mutationRate3;
 
 	// functional variables
 	float plantsNearby[4];
@@ -125,7 +129,7 @@ protected:
 	void lookAround();
 	void addToNearby(int index, int* weights, int weightsIndex, MapCell mapCell);
 	bool compare(char dir, int rank, char toCompare);
-	
+
 	void nextTreeNode(bool lastDecision);
 
 	void randomTree(int length);

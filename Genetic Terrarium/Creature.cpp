@@ -37,6 +37,7 @@ Creature::Creature(float carnivorism) :carnivorism(carnivorism) {
 	growthRate = RANDOM_NORMALISED_FLOAT * MAX_GROWTH_RATE;
 	mapX = NULL;
 	mapY = NULL;
+	mutationRate = 0.2f + RANDOM_NORMALISED_FLOAT * 0.4f;
 
 	setCreatureID();
 	//creatures start with a fixed percentage of their max energy
@@ -46,7 +47,7 @@ Creature::Creature(float carnivorism) :carnivorism(carnivorism) {
 	inHeat = false;
 	alive = false;
 	ticksSinceShit = 0;
-			
+
 	//set age to -1 as it is just about to be incremented in updateCreatureVariables();
 	age = -1;
 	generation = 0;
@@ -58,7 +59,7 @@ Creature::Creature(float carnivorism) :carnivorism(carnivorism) {
 	currentTreeNodeEnd = decisionTreeLength - 1;
 }
 
-Creature::~Creature(){
+Creature::~Creature() {
 	//clean up, remember to delete from creature map
 	delete[] decisionTree;
 	for (int i = 0; i < 1; i++) {
@@ -70,11 +71,8 @@ Creature::~Creature(){
 }
 //initialise the creature from its parents
 
-void Creature::setCreatureAttributes(int* tree, int treeLength, float _carnivorism, float _maxMass, float _mass, float _energy, 
-	float _energyThreshold,  float _growthRate, int _generation) {
-
-	if (decisionTree != NULL)
-		delete[] decisionTree;
+void Creature::setCreatureAttributes(int* tree, int treeLength, float _carnivorism, float _maxMass, float _mass, float _energy,
+	float _energyThreshold, float _mutationRate, float _growthRate, int _generation) {
 
 	active = false;
 	actionTaken = false;
@@ -88,6 +86,7 @@ void Creature::setCreatureAttributes(int* tree, int treeLength, float _carnivori
 	energy = _energy;
 	expendedEnergy = 0;
 	energyThreshold = _energyThreshold;
+	mutationRate = _mutationRate;
 	growthRate = _growthRate;
 	generation = _generation;
 	mapX = NULL;
@@ -113,19 +112,20 @@ void Creature::setCreatureAttributes(int* tree, int treeLength, float _carnivori
 }
 
 void Creature::setCreatureAttributes(Creature* creature) {
-	if (decisionTree != NULL)
-		delete[] decisionTree;
+
 	active = false;
 	actionTaken = false;
 	lookedAround = false;
 
 	//create random decision tree between 20 and 60 total nodes
 	randomTree(20 + xor128() % 40);
-	carnivorism = creature->getCarnivorism() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getCarnivorism();
+	mutationRate2 = creature->getMutationRate() * creature->getMutationRate();
+	carnivorism = creature->getCarnivorism() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * creature->getCarnivorism();
 	//get the variables of the provided creature and vary them by +-5%
-	maxMass = creature->getMaxMass() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getMaxMass();
-	energyThreshold = creature->getEnergyThreshold() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getEnergyThreshold();
-	growthRate = creature->getGrowthRate() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getGrowthRate();
+	maxMass = creature->getMaxMass() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * creature->getMaxMass();
+	energyThreshold = creature->getEnergyThreshold() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * creature->getEnergyThreshold();
+	mutationRate = creature->getMutationRate() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * creature->getMutationRate();
+	growthRate = creature->getGrowthRate() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * creature->getGrowthRate();
 	mapX = NULL;
 	mapY = NULL;
 
@@ -146,13 +146,13 @@ void Creature::setCreatureAttributes(Creature* creature) {
 	//creatures start with a fixed percentage of their max energy
 	energy = maxEnergy * START_ENERGY_PERCENTAGE;
 	expendedEnergy = 0;
-	
+
 	//curentTreeNode holds the current decision sub node, which at this point is the whole tree, needs to be cpoied
 	currentTreeNodeStart = 0;
 	currentTreeNodeEnd = decisionTreeLength - 1;
 }
 
-bool Creature::update(){
+bool Creature::update() {
 	decisionsBeforeAction = -1;
 	//reduce energy every tick regardless of action, it takes energy to live
 	energy -= movementCost;
@@ -183,8 +183,8 @@ bool Creature::update(){
 				expendedEnergy += movementCost;
 			}
 			//if the current creature is a carnivore and the target square has a creature in it
-			else if (carnivorism > 0.8 && worldMap->getCell(mapX, mapY + 1).creature != NULL){// && !worldMap->getCell(mapX, mapY + 1).creature->isCarnivore()) {
-				//kill the creature then move up
+			else if (carnivorism > 0.8 && worldMap->getCell(mapX, mapY + 1).creature != NULL) {// && !worldMap->getCell(mapX, mapY + 1).creature->isCarnivore()) {
+																							   //kill the creature then move up
 				worldMap->addCarcass(mapX, mapY + 1, worldMap->getCell(mapX, mapY + 1).creature->kill());
 				//killing takes energy
 				energy -= movementCost;
@@ -455,7 +455,7 @@ bool Creature::update(){
 	return alive;
 }
 
-void Creature::nextTreeNode(bool lastDecision){
+void Creature::nextTreeNode(bool lastDecision) {
 	//current tree node doesn't need to create tons of array copies, it can be 2 ints one that tracks the start of the current node in the 
 	//decision tree and one that tracks the end, then they just collapse in as the decision is made, pointing to smaller and smaller sub trees
 
@@ -479,38 +479,38 @@ void Creature::nextTreeNode(bool lastDecision){
 	} while (decisions > actions);
 
 	//if the decision was true point to the start and end of the true sub tree
-	if (lastDecision){
+	if (lastDecision) {
 		//record the length of the new sub tree
 		currentTreeNodeStart = currentTreeNodeStart + 1;
 		currentTreeNodeEnd = falseSubTreeStart - 1;
 	}
-	else{
+	else {
 		currentTreeNodeStart = falseSubTreeStart;
 		//current tree node end stays the same;
 	}
 
 }
 
-void Creature::updateCreatureVariables(){
-	
+void Creature::updateCreatureVariables() {
+
 	//**************
 	//TODO - fix these mass dependant variables
 	//************
-	if (mass < maxMass){
+	if (mass < maxMass) {
 		float massGained = growthRate * (maxMass - mass);
 		mass += massGained;
 		energy -= massGained * ENERGY_TO_MASS_CONST;
 	}
-	
+
 	movementCost = mass * MOVEMENT_COST_CONST; //increse exponentially (linearly?) with mass
-	
-	if (mass / maxMass > 0.8f){
+
+	if (mass / maxMass > 0.8f) {
 		mature = true;
 	}
 	else {
 		mature = false;
 	}
-	
+
 	//defense = MAX_DEFENSE/(mass*mass);//increases exponentially with mass 
 	maxEnergy = mass * MAX_ENERGY_CONST; //dependant on mass, increase linearly with mass? - set this quite high i think
 	if (energy > maxEnergy) {
@@ -518,7 +518,7 @@ void Creature::updateCreatureVariables(){
 		energy = maxEnergy;
 		expendedEnergy += difference;
 	}
-	
+
 	age++;
 	ticksSinceShit++;
 	if (ticksSinceShit > 15) {
@@ -528,7 +528,7 @@ void Creature::updateCreatureVariables(){
 	}
 }
 
-void Creature::takeAction(){
+void Creature::takeAction() {
 	actionTaken = true;
 	//eat
 	if (energy < maxEnergy) {
@@ -565,41 +565,41 @@ void Creature::lookAround() {
 	//         3 4 X 4 3
 	//         2 3 4 2 2
 	//         1 2 3 2 1
-	int herbivoreWeights[25] = { 1, 2, 3, 2, 1, 
-								 2, 3, 4, 3, 2,
-								 3, 4, 0, 4, 3,
-								 2, 3, 4, 3, 2,
-								 1, 2, 3, 2, 1 };
+	int herbivoreWeights[25] = { 1, 2, 3, 2, 1,
+		2, 3, 4, 3, 2,
+		3, 4, 0, 4, 3,
+		2, 3, 4, 3, 2,
+		1, 2, 3, 2, 1 };
 
 	int carnivoreWeights[49] = { 1, 2,  4,  8,  4,  2,  1,
-								 2, 4,  8,  16, 8,  4,  2,
-								 4, 8,  16, 32, 16, 8,  4,
-								 8, 16, 32, 0,  32, 16, 8,
-								 4, 8,  16, 32, 16, 8,  4,
-								 2, 4,  8,  16, 8,  4,  2,
-								 1, 2,  4,  8,  4,  2,  1};
+		2, 4,  8,  16, 8,  4,  2,
+		4, 8,  16, 32, 16, 8,  4,
+		8, 16, 32, 0,  32, 16, 8,
+		4, 8,  16, 32, 16, 8,  4,
+		2, 4,  8,  16, 8,  4,  2,
+		1, 2,  4,  8,  4,  2,  1 };
 
 	/*int carnivoreWeights[441] = {  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,
-								   2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,
-								   3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,
-								   4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,
-								   5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,
-								   6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,
-								   7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,
-								   8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,
-								   9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,
-								  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
-								  11, 12, 13, 14, 15, 16, 17, 18, 19, 20,  0, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11,
-								  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
-								   9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,
-								   8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 16, 15, 14, 13, 12, 11, 10,  9,  8,
-								   7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,
-								   6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,
-								   5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,
-								   4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,
-								   3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,
-								   2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,
-								   1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1 };*/
+	2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,
+	3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,
+	4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,
+	5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,
+	6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,
+	7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,
+	8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,
+	9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,
+	10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
+	11, 12, 13, 14, 15, 16, 17, 18, 19, 20,  0, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11,
+	10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,
+	9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,
+	8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 16, 15, 14, 13, 12, 11, 10,  9,  8,
+	7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,
+	6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,
+	5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,
+	4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,
+	3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,
+	2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,
+	1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1 };*/
 	//reset food animal comparators
 	for (int i = 0; i < 4; i++) {
 		//TODO - change food nearby to a float and have it track energy content not plant maturity, then also add a food in current position comparison
@@ -659,7 +659,7 @@ void Creature::lookAround() {
 			if (carcassNearby[i] < carcassNearby[j]) {
 				carcassRank[i] ++;
 			}
-			
+
 		}
 	}
 	lookedAround = true;
@@ -676,7 +676,7 @@ bool Creature::compare(char dir, int rank, char toCompare) {
 	}
 	int* comparing = NULL;
 	switch (toCompare) {
-	case 'p' :
+	case 'p':
 		comparing = plantsRank;
 		break;
 	case 'h':
@@ -703,7 +703,7 @@ bool Creature::compare(char dir, int rank, char toCompare) {
 	return false;
 }
 
-void Creature::randomTree(int length){
+void Creature::randomTree(int length) {
 	// there are only 5 rules for a valid tree from a decision tree array
 	// 1. the first element must be a decision
 	// 2. the last 2 elements must be actions
@@ -729,16 +729,16 @@ void Creature::randomTree(int length){
 	//randomly fill the rest of the decision tree, making sure the final tree obeys rule 3
 	int actions = 0;
 	int decisions = 1;
-	for (int i = 1; i < decisionTreeLength - 2; i++){
+	for (int i = 1; i < decisionTreeLength - 2; i++) {
 		//if the difference in number of decisions and actions already in the tree is less than the number of spaces left to fill and the number 
 		// of actions is less than the number of decisions (to obey rule 4) then keep filling at random  
-		if (decisions - actions < decisionTreeLength - 2 - i && actions < decisions){
-			if (xor128() % 2 == 0){
+		if (decisions - actions < decisionTreeLength - 2 - i && actions < decisions) {
+			if (xor128() % 2 == 0) {
 				//increase the liklihood of replication in random tree to make morelikely to catch on
 				//if (RANDOM_NORMALISED_FLOAT < 0.0)
 				//	decisionTree[i] = 6;
 				//else
-					decisionTree[i] = 1 + xor128() % NUM_OF_ACTIONS;
+				decisionTree[i] = 1 + xor128() % NUM_OF_ACTIONS;
 				actions++;
 			}
 			else {
@@ -747,7 +747,7 @@ void Creature::randomTree(int length){
 			}
 		}
 		//once the difference in decisions and actions is equal to the number of positions in the tree to fill they all must be actions
-		else if (decisions - actions >= decisionTreeLength - 2 - i){
+		else if (decisions - actions >= decisionTreeLength - 2 - i) {
 			decisionTree[i] = 1 + xor128() % NUM_OF_ACTIONS;
 			actions++;
 		}
@@ -758,28 +758,36 @@ void Creature::randomTree(int length){
 	}
 }
 
-void Creature::checkVariablesWithinBounds(){
+void Creature::checkVariablesWithinBounds() {
 	//TODO these all need checked and fixed
-	if (maxMass < 10){
+	if (maxMass < 10) {
 		maxMass = 10;
 	}
-	else if (maxMass > MAX_MAX_MASS){
+	else if (maxMass > MAX_MAX_MASS) {
 		maxMass = MAX_MAX_MASS;
 	}
-	
-	if (energyThreshold < 0){
+
+	if (energyThreshold < 0) {
 		energyThreshold = 0;
 	}
-	else if (energyThreshold > maxMass * MAX_ENERGY_CONST){
+	else if (energyThreshold > maxMass * MAX_ENERGY_CONST) {
 		energyThreshold = maxMass * MAX_ENERGY_CONST;
 	}
 
-	if (growthRate < 0){
+	if (growthRate < 0) {
 		growthRate = 0;
 	}
-	else if (growthRate > MAX_GROWTH_RATE){
+	else if (growthRate > MAX_GROWTH_RATE) {
 		growthRate = MAX_GROWTH_RATE;
 	}
+
+	if (mutationRate < 0.0f)
+		mutationRate = 0.0f;
+	else if (mutationRate > MAX_MUTATION_RATE)
+		mutationRate = MAX_MUTATION_RATE;
+
+	mutationRate2 = mutationRate * mutationRate;
+	mutationRate3 = mutationRate2 * mutationRate;
 
 	if (carnivorism < 0) {
 		carnivorism = 0;
@@ -824,13 +832,13 @@ void Creature::setCreatureID() {
 	//holds pregnancy details, asexual, num, range of offspring and len of preg
 	//TODO - if asexual start at 1
 	creatureID[1] = (1 for asexual +
-		(numOffspringRange / MAX_NUM_OFFSPRING_RANGE) +
-		(numOffspringMedian / MAX_NUM_OFFSPRING_MEDIAN) +
-		(lengthOfPregnancy / MAX_LENGTH_OF_PREGNANCY)) * 255 / 4;
+	(numOffspringRange / MAX_NUM_OFFSPRING_RANGE) +
+	(numOffspringMedian / MAX_NUM_OFFSPRING_MEDIAN) +
+	(lengthOfPregnancy / MAX_LENGTH_OF_PREGNANCY)) * 255 / 4;
 	//creatureID[2] = 255;
 	//blue covers maxMass, energyThreshold, growthrate
-	creatureID[2] = (2 * (maxMass / MAX_MAX_MASS) + 
-		(growthRate / MAX_GROWTH_RATE)) * 255 / 3;
+	creatureID[2] = (2 * (maxMass / MAX_MAX_MASS) +
+	(growthRate / MAX_GROWTH_RATE)) * 255 / 3;
 	creatureID[2] = 0;
 	creatureID[1] = 0;*/
 	creatureID[0] = carnivorism * 255;// 127;
@@ -876,7 +884,7 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 	//then have it mutate with a small chance
 	//very small chance to copy a node of decision tree and its sub tree and replace any random node and its sub tree with the copied one
 
-	if (RANDOM_NORMALISED_FLOAT < MUTATION_RATE * MUTATION_RATE * MUTATION_RATE) {
+	if (RANDOM_NORMALISED_FLOAT < mutationRate3) {
 		//find the start and end of a random node to copy
 		int nodeToCopyStart = xor128() % decisionTreeLength;
 		int nodeToCopyEnd = nodeToCopyStart;
@@ -934,7 +942,7 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 		}
 	}
 	//chance of some random action or decision being randomised to some other action or decision (doesn't change action to decision or vice versa)
-	else if (RANDOM_NORMALISED_FLOAT < MUTATION_RATE) {
+	else if (RANDOM_NORMALISED_FLOAT < mutationRate) {
 		babyTreeLength = decisionTreeLength;
 		babyDecisionTree = new int[babyTreeLength];
 
@@ -971,7 +979,7 @@ void Creature::replicate() {
 	list of babies - start with only 1
 	when replicate add to list of babies
 	babies get mass each tick from their parent - does parent toal movement mass then increase??
-	randomise 
+	randomise
 	*/
 	//int babyTreeLength = decisionTreeLength;
 	//int* babyTree = new int[babyTreeLength];
@@ -981,22 +989,23 @@ void Creature::replicate() {
 
 	generateOffspringDecisionTree(babyTree, babyTreeLength, NULL, NULL);
 
-	float babyMaxMass = maxMass + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * maxMass;
+	float babyMaxMass = maxMass + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * maxMass;
 	//TODO - doubled max energy constant (from 0.75) and changed the 3 values below. increased max plant energy from 1 to 1.5
 	float babyMass = mass * 0.30f;
 	float babyEnergy = energy * 0.30f;
 	mass = mass - babyMass;
-	energy = energy  - babyEnergy;
-	float babyEnergyThreshold = energyThreshold + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * maxMass * MAX_ENERGY_CONST; //max energy threshold
-	float babyGrowthRate = growthRate + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * MAX_GROWTH_RATE;
-	float babyCarnivore = carnivorism + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * 1.0f; //max carnivorism
-	//if (RANDOM_NORMALISED_FLOAT < 0.1) {
-	//	babyCarnivore = true;
-	//}
+	energy = energy - babyEnergy;
+	float babyEnergyThreshold = energyThreshold + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * maxMass * MAX_ENERGY_CONST; //max energy threshold
+	float babyGrowthRate = growthRate + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * MAX_GROWTH_RATE;
+	float babyCarnivore = carnivorism + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * 1.0f; //max carnivorism
+	float babyMutationRate = mutationRate + ((RANDOM_NORMALISED_FLOAT - 0.5f) * mutationRate2) * MAX_MUTATION_RATE; //max mutationRate
+																													//if (RANDOM_NORMALISED_FLOAT < 0.1) {
+																													//	babyCarnivore = true;
+																													//}
 
 	baby[0] = creatureList->getPoolCreature();
-	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, babyCarnivore, babyMaxMass, babyMass, babyEnergy, babyEnergyThreshold, 
-		babyGrowthRate, generation+1);
+	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, babyCarnivore, babyMaxMass, babyMass, babyEnergy, babyEnergyThreshold,
+		babyMutationRate, babyGrowthRate, generation + 1);
 }
 
 //TODO COMPLETELY BROKEN

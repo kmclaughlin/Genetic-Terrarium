@@ -17,6 +17,8 @@ public:
 	float getAverageMass() { return averageMass; };
 	float getAverageTreeLength() { return averageTreeLength; };
 	float getAverageEnergy() { return averageEnergy; };
+	float getAverageCarnivorism() { return averageCarnivorism; };
+	float getAverageMutationRate() { return averageMutationRate; };
 	float getAverageDecisionsBeforeActions() { return averageDecisionsBeforeActions; };
 	int getAgeOfOldest() { return ageOfOldest; };
 	int getAverageAge() { return averageAge; };
@@ -44,6 +46,8 @@ private:
 	float averageMass;
 	float averageTreeLength;
 	float averageEnergy;
+	float averageCarnivorism;
+	float averageMutationRate;
 	float averageDecisionsBeforeActions;
 	int ageOfOldest;
 	int averageAge;

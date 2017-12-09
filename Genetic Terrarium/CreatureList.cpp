@@ -98,6 +98,8 @@ void CreatureList::update(){
 	float totalTreeLength = 0;
 	float totalDecisionsMade = 0;
 	float totalEnergy = 0;
+	float totalCarnivorism = 0;
+	float totalMutationRate = 0;
 	int highestAge = 0;
 	int totalAge = 0;
 	int highestGeneration = 0;
@@ -122,6 +124,8 @@ void CreatureList::update(){
 					totalTreeLength += current->creature->getDecisionTreeLength();
 					totalDecisionsMade += current->creature->getDecisionsBeforeAction();
 					totalEnergy += current->creature->getEnergy();
+					totalCarnivorism += current->creature->getCarnivorism();
+					totalMutationRate += current->creature->getMutationRate();
 					totalAge += current->creature->getAge();
 					if (current->creature->getAge() > highestAge) {
 						highestAge = current->creature->getAge();
@@ -136,6 +140,7 @@ void CreatureList::update(){
 				}
 			}
 			else {
+				current->creature->prepareForPool();
 				returnCreatureToPool(current);
 			}
 		}
@@ -149,6 +154,8 @@ void CreatureList::update(){
 		averageMass = totalMass / numOfActiveCreatures;
 		averageTreeLength = totalTreeLength / numOfActiveCreatures;
 		averageEnergy = totalEnergy / numOfActiveCreatures;
+		averageCarnivorism = totalCarnivorism / numOfActiveCreatures;
+		averageMutationRate = totalMutationRate / numOfActiveCreatures;
 		averageDecisionsBeforeActions = totalDecisionsMade / numOfActiveCreatures;
 		numOfActiveCreatures = tempNumOfActiveCreatures;
 		ageOfOldest = highestAge;

@@ -98,11 +98,12 @@ void Game::GameLoop(){
 				"\nAverage age:      " + to_string(creatureList->getAverageAge()) +
 				"\nHighest gen:      " + to_string(creatureList->getHighestGen()) +
 				"\nLowest gen:       " + to_string(creatureList->getLowestGen()) +
-				"\nAverage mass:     " + to_string((int)creatureList->getAverageMass()) +
-				"\n% herbivores:     " + to_string(100) +
+				"\nAverage mass:     " + to_string(creatureList->getAverageMass()) +
+				"\nAv carnivorism:   " + to_string(creatureList->getAverageCarnivorism()) +
 				"\nAv tree length:   " + to_string((int)creatureList->getAverageTreeLength()) +
-				"\nAv energy:        " + to_string((int)creatureList->getAverageEnergy()) +
-				"\nDecs b\\ actions:  " + to_string((int)creatureList->getAverageDecisionsBeforeActions());
+				"\nAv energy:        " + to_string(creatureList->getAverageEnergy()) +
+				"\nAv mutation /r:   " + to_string(creatureList->getAverageMutationRate()) +
+				"\nDecs b\\ actions:  " + to_string(creatureList->getAverageDecisionsBeforeActions());
 			displayedStats->setText(statsText);
 			creatureList->collectCreatureStats();
 			statTimer = clock();
@@ -237,7 +238,7 @@ void Game::GameLoop(){
 			}
 
 			if (currentEvent.key.code == 'c' - 'a') {
-				spawnCarnivores(1);
+				spawnCarnivores(10);
 			}
 			if (currentEvent.key.code == 'h' - 'a') {
 				spawnHerbivores(1);
@@ -263,7 +264,7 @@ void Game::GameLoop(){
 				if (worldMap->getCell(mapX, mapY).creature) {
 					if (selectedSpecies != NULL) delete[] selectedSpecies;
 					selectedSpecies = new float[4];
-					selectedSpecies[0] = worldMap->getCell(mapX, mapY).creature->isCarnivore();
+					selectedSpecies[0] = worldMap->getCell(mapX, mapY).creature->getCarnivorism();
 					selectedSpecies[1] = worldMap->getCell(mapX, mapY).creature->getMaxMass();
 					selectedSpecies[2] = worldMap->getCell(mapX, mapY).creature->getEnergyThreshold();
 					selectedSpecies[3] = worldMap->getCell(mapX, mapY).creature->getGrowthRate();
@@ -315,13 +316,12 @@ void Game::saveCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr file
 				for (int j = 0; j < treeLength; j++) {
 					outputFile << decisionTree[j] << " ";
 				}
-				outputFile << aliveCreatures[i]->isCarnivore() << " "
+				outputFile << aliveCreatures[i]->getCarnivorism() << " "
 					<< aliveCreatures[i]->getMaxMass() << " "
 					<< aliveCreatures[i]->getEnergyThreshold() << " "
 					<< aliveCreatures[i]->getGrowthRate() << " "
-					<< aliveCreatures[i]->getNumOffspringRange() << " "
-					<< aliveCreatures[i]->getNumOffspringMedian() << " "
-					<< aliveCreatures[i]->getLengthOfPregnancy() << endl;
+					<< aliveCreatures[i]->getMutationRate() << " "
+					<< aliveCreatures[i]->getGeneration() << endl;
 			}
 		}
 		outputFile.close();
@@ -345,17 +345,15 @@ void Game::loadCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr file
 		{
 			istringstream iss(line);
 			int* decisionTree;
-			int decisionTreeLength, numOffspringRange, numOffspringMedian, lengthOfPregnancy;
-			bool carnivore;
-			float maxMass, mass, energyThreshold, growthRate;
+			int decisionTreeLength, generation;
+			float maxMass, mass, energyThreshold, growthRate, carnivorism, mutationRate;
 
 			iss >> decisionTreeLength;
 			decisionTree = new int[decisionTreeLength];
 			for (int i = 0; i < decisionTreeLength; i++) {
 				iss >> decisionTree[i];
 			}
-			if (!(iss >> carnivore >> maxMass >> energyThreshold >> growthRate >> numOffspringRange
-				>> numOffspringMedian >> lengthOfPregnancy)) {
+			if (!(iss >> carnivorism >> maxMass >> energyThreshold >> growthRate >> mutationRate >> generation)) {
 				//indicates an error here, not sure how to deal with it
 				cout << "sstream input error" << endl;
 			}
@@ -363,8 +361,8 @@ void Game::loadCreatures(tgui::TextBox::Ptr pathTextBox, tgui::TextBox::Ptr file
 
 			Creature* creatureFromFile = creatureList->getPoolCreature();
 
-			creatureFromFile->setCreatureAttributes(decisionTree, decisionTreeLength, carnivore, maxMass, mass, 0.0f,
-				energyThreshold, growthRate, numOffspringRange, numOffspringMedian, lengthOfPregnancy, 0);
+			creatureFromFile->setCreatureAttributes(decisionTree, decisionTreeLength, carnivorism, maxMass, mass, 0.0f,
+				energyThreshold, mutationRate, growthRate, generation);
 			int x, y;
 			do {
 				x = 1 + xor128() % (width - 1);
@@ -438,7 +436,7 @@ void Game::GameInit(){
 	initialise resource map (change to have start in boon times, ie 1 in 3 cells mature
 	resource map and creature map need to be created and be vairables of main game file then passed by reference down to what ever needs them below
 	*/
-	int numHerbivoreSpecies = 1;
+	int numHerbivoreSpecies = 5;
 	int numCarnivoreSpecies = 0;
 	
 	//seed the random number generator
@@ -448,7 +446,7 @@ void Game::GameInit(){
 
 	worldMap = new WorldMap(width, height, 1.0f);
 	if (!creatureList)
-		creatureList = new CreatureList(2000);
+		creatureList = new CreatureList(150);
 	//pass the maps to the creature class as static pointers so creatures can interact with them
 	Creature::worldMap = worldMap;
 	Creature::creatureList = creatureList;
@@ -460,15 +458,14 @@ void Game::GameInit(){
 void Game::spawnHerbivores(int numHerbivores) {
 	for (int i = 0; i < numHerbivores; i++) {
 		//creates full random creature to act as the template for a species
-		//it is passed as a variable to the newly created creatures in the  
-		Creature* speciesBase = new Creature(false);
+		//it is passed as a variable to the newly created creatures in the   
+		Creature* speciesBase = new Creature(0.0f);
 
 		cout << speciesBase->getMaxMass() << endl
 			<< speciesBase->getGrowthRate() << endl
 			<< speciesBase->getEnergyThreshold() << endl
-			<< speciesBase->getNumOffspringRange() << endl
-			<< speciesBase->getNumOffspringMedian() << endl
-			<< speciesBase->getLengthOfPregnancy() << endl
+			<< speciesBase->getMutationRate() << endl
+			<< speciesBase->getCarnivorism() << endl
 			<< speciesBase->getCreatureID()[0] << " " << speciesBase->getCreatureID()[1] << " " << speciesBase->getCreatureID()[2] << endl;
 
 		//want to create x num creatures, want to have max 1 creature to 9 cells
@@ -497,14 +494,13 @@ void Game::spawnCarnivores(int numCarnivores) {
 	for (int i = 0; i < numCarnivores; i++) {
 		//creates full random creature to act as the template for a species
 		//it is passed as a variable to the newly created creatures in the  
-		Creature* speciesBase = new Creature(true);
+		Creature* speciesBase = new Creature(1.0f);
 
 		cout << speciesBase->getMaxMass() << endl
 			<< speciesBase->getGrowthRate() << endl
 			<< speciesBase->getEnergyThreshold() << endl
-			<< speciesBase->getNumOffspringRange() << endl
-			<< speciesBase->getNumOffspringMedian() << endl
-			<< speciesBase->getLengthOfPregnancy() << endl
+			<< speciesBase->getMutationRate() << endl
+			<< speciesBase->getCarnivorism() << endl
 			<< speciesBase->getCreatureID()[0] << " " << speciesBase->getCreatureID()[1] << " " << speciesBase->getCreatureID()[2] << endl;
 
 		//want to create x num creatures, want to have max 1 creature to 9 cells

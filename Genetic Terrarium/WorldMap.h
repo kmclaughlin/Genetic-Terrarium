@@ -48,10 +48,13 @@ private:
 	const float MAX_PLANT_ENERGY = 1.5f;
 	const float SEEDLING_ENERGY = 0.2f;
 	const float GROWTH_FACTOR = 1;
-	const float CARCASS_DECAY_RATE = 0.05f;
+	const float CARCASS_DECAY_RATE = 0.1f;
 
 	float calculateGrowthFactor(float nutrientValue) { return nutrientValue / (nutrientValue + GROWTH_FACTOR); }
 	bool inBounds(int x, int y);
+	void updateNutrient(int x, int y, float randomNumber);
+	void updateCarcass(int x, int y);
+	void updatePlant(int x, int y, float randomNumber);
 };
 
 #endif

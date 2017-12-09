@@ -10,11 +10,11 @@ class CreatureList;
 class Creature{
 public:
 	//constructor destructor
-	Creature(bool carnivore);
+	Creature(float carnivorism);
 	~Creature();
 
-	void setCreatureAttributes(int* tree, int treeLength, bool carnivore, float maxMass, float mass, float energy, float energyThreshold, float growthRate,
-		int numOffspringRange, int numOffspringMedian, int lengthOfPregnancy, int _generation);
+	void setCreatureAttributes(int* tree, int treeLength, float carnivorism, float maxMass, float mass, float energy, float energyThreshold, 
+		 float growthRate, int _generation);
 	void setCreatureAttributes(Creature* creature);
 	void born(int x, int y);
 
@@ -28,21 +28,18 @@ public:
 
 	int* getDecisionTree() { return decisionTree; };
 	int getDecisionTreeLength() { return decisionTreeLength; };
-	bool isCarnivore() { return carnivore; };
+	float getCarnivorism() { return carnivorism; };
 	float getMaxMass() { return maxMass; };
 	float getEnergy() { return energy; };
 	float getEnergyThreshold() { return energyThreshold; };
 	float getGrowthRate() { return growthRate; };
-	int getNumOffspringRange() { return numOffspringRange; };
-	int getNumOffspringMedian() { return numOffspringMedian; };
-	int getLengthOfPregnancy() { return lengthOfPregnancy; };
 	int* getCreatureID() { return creatureID; };
 	int getDecisionsBeforeAction() { return decisionsBeforeAction; };
 	int getAge() { return age; };
 	int getGeneration() { return generation; };
 	bool isSameSpecies(float* statsToCheck);
 	float getTotalEnergy();
-	void prepareForPool() { alive = false; active = false; };
+	void prepareForPool() { alive = false; active = false; delete[] decisionTree; };
 
 	static WorldMap* worldMap;
 	static CreatureList* creatureList;
@@ -54,16 +51,13 @@ protected:
 	//it left off in the decision process
 	const int MAX_TIME = 1; //time in milliseconds
 	const float MAX_DEFENSE = 1.0;
-	const float START_ENERGY_PERCENTAGE = 0.75f / 10.0f; //maybe 
+	const float START_ENERGY_PERCENTAGE = 0.75f  * 2.0f/ 10.0f; //maybe 
 	const float MOVEMENT_COST_CONST = 0.005f;
 	const float MAX_ENERGY_CONST = 0.75f *10.0f;
 	const float ENERGY_TO_MASS_CONST = 0.5;
 	//These may be needed to set random values
 	const float MAX_MAX_MASS = 60.0f;
 	const float MAX_GROWTH_RATE = 0.15f;
-	const int MAX_NUM_OFFSPRING_RANGE = 2;
-	const int MAX_NUM_OFFSPRING_MEDIAN = 1;
-	const int MAX_LENGTH_OF_PREGNANCY = 10;
 	//TODO - make this a creature specific variable?
 	const float MUTATION_RATE = 0.8f;// 0.2f;
 	const float CHANCE_OF_DEATH = 0;// .000005f;
@@ -77,7 +71,6 @@ protected:
 	float energyThreshold; //value that tree can make decisions on compared to current energy
 	//maxMass dictates movement energy cost and defense score, higher mass takes longer to get to maturity, takes energy to grow
 	//can have longer pregnancy to have children closer to maturity at birth but takes more energy from mother to grow them all
-	bool carnivore;
 	float maxMass;
 	//could have body mass and energy mass, energy mass fluctuates with energy level, body mass is not a function of energy, though it determines
 	// max energy
@@ -89,22 +82,20 @@ protected:
 	int age;//?? update ticks survived?
 	int generation; // number of ancestors
 	bool mature; //maturity reached at 80% max mass, when mature can breed
-	int numOffspringRange;
-	int numOffspringMedian;
-	int lengthOfPregnancy;
 	bool pregnant;
 	bool inHeat;
 	int mapX, mapY;
 	float growthRate; //grow every round if not max mass, growth rate is the percentage of (mass - maxMass) gained ie will grow fast when small but slow off as older
 	Creature* baby[1];
 	int creatureID[3];
+	float carnivorism;
 
 	// functional variables
 	float plantsNearby[4];
 	float carcassNearby[4];
-	int carnivoreNearby[4];
+	float carnivoreNearby[4];
+	float herbivoreNearby[4];
 	int friendlyNearby[4];
-	int herbivoreNearby[4];
 
 	int plantsRank[4];
 	int carnivoreRank[4];

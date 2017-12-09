@@ -24,7 +24,7 @@ const  int Creature::NUM_OF_ACTIONS = 6;
 WorldMap* Creature::worldMap = NULL;
 CreatureList* Creature::creatureList = NULL;
 
-Creature::Creature(bool carnivore) :carnivore(carnivore) {
+Creature::Creature(float carnivorism) :carnivorism(carnivorism) {
 	active = false;
 	actionTaken = false;
 	lookedAround = false;
@@ -35,9 +35,6 @@ Creature::Creature(bool carnivore) :carnivore(carnivore) {
 	mass = 0.9f * maxMass;
 	energyThreshold = maxMass * MAX_ENERGY_CONST * RANDOM_NORMALISED_FLOAT;
 	growthRate = RANDOM_NORMALISED_FLOAT * MAX_GROWTH_RATE;
-	numOffspringRange = xor128() % MAX_NUM_OFFSPRING_RANGE;
-	numOffspringMedian = xor128() % MAX_NUM_OFFSPRING_MEDIAN;
-	lengthOfPregnancy = xor128() % MAX_LENGTH_OF_PREGNANCY;
 	mapX = NULL;
 	mapY = NULL;
 
@@ -63,7 +60,7 @@ Creature::Creature(bool carnivore) :carnivore(carnivore) {
 
 Creature::~Creature(){
 	//clean up, remember to delete from creature map
-	delete decisionTree;
+	delete[] decisionTree;
 	for (int i = 0; i < 1; i++) {
 		if (baby[i] != NULL) {
 			//the creature is being deleted - should its unborn babies also be deleted?
@@ -73,10 +70,11 @@ Creature::~Creature(){
 }
 //initialise the creature from its parents
 
-void Creature::setCreatureAttributes(int* tree, int treeLength, bool _carnivore, float _maxMass, float _mass, float _energy, float _energyThreshold, 
-	float _growthRate, int _numOffspringRange, int _numOffspringMedian, int _lengthOfPregnancy, int _generation) {
+void Creature::setCreatureAttributes(int* tree, int treeLength, float _carnivorism, float _maxMass, float _mass, float _energy, 
+	float _energyThreshold,  float _growthRate, int _generation) {
 
-	delete[] decisionTree;
+	if (decisionTree != NULL)
+		delete[] decisionTree;
 
 	active = false;
 	actionTaken = false;
@@ -84,16 +82,13 @@ void Creature::setCreatureAttributes(int* tree, int treeLength, bool _carnivore,
 
 	decisionTree = tree;
 	decisionTreeLength = treeLength;
-	carnivore = _carnivore;
+	carnivorism = _carnivorism;
 	maxMass = _maxMass;
 	mass = _mass;
 	energy = _energy;
 	expendedEnergy = 0;
 	energyThreshold = _energyThreshold;
 	growthRate = _growthRate;
-	numOffspringRange = _numOffspringRange;
-	numOffspringMedian = _numOffspringMedian;
-	lengthOfPregnancy = _lengthOfPregnancy;
 	generation = _generation;
 	mapX = NULL;
 	mapY = NULL;
@@ -118,21 +113,19 @@ void Creature::setCreatureAttributes(int* tree, int treeLength, bool _carnivore,
 }
 
 void Creature::setCreatureAttributes(Creature* creature) {
-	delete[] decisionTree;
+	if (decisionTree != NULL)
+		delete[] decisionTree;
 	active = false;
 	actionTaken = false;
 	lookedAround = false;
 
 	//create random decision tree between 20 and 60 total nodes
 	randomTree(20 + xor128() % 40);
-	carnivore = creature->isCarnivore();
+	carnivorism = creature->getCarnivorism() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getCarnivorism();
 	//get the variables of the provided creature and vary them by +-5%
 	maxMass = creature->getMaxMass() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getMaxMass();
 	energyThreshold = creature->getEnergyThreshold() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getEnergyThreshold();
 	growthRate = creature->getGrowthRate() + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * creature->getGrowthRate();
-	numOffspringRange = creature->getNumOffspringRange() + (xor128() % 3) - 1;
-	numOffspringMedian = creature->getNumOffspringMedian() + (xor128() % 3) - 1;
-	lengthOfPregnancy = creature->getLengthOfPregnancy() + (xor128() % 5) - 2;
 	mapX = NULL;
 	mapY = NULL;
 
@@ -153,9 +146,6 @@ void Creature::setCreatureAttributes(Creature* creature) {
 	//creatures start with a fixed percentage of their max energy
 	energy = maxEnergy * START_ENERGY_PERCENTAGE;
 	expendedEnergy = 0;
-	if (carnivore) {
-		energy = maxEnergy * START_ENERGY_PERCENTAGE * 10;
-	}
 	
 	//curentTreeNode holds the current decision sub node, which at this point is the whole tree, needs to be cpoied
 	currentTreeNodeStart = 0;
@@ -193,7 +183,7 @@ bool Creature::update(){
 				expendedEnergy += movementCost;
 			}
 			//if the current creature is a carnivore and the target square has a creature in it
-			else if (carnivore && worldMap->getCell(mapX, mapY + 1).creature != NULL){// && !worldMap->getCell(mapX, mapY + 1).creature->isCarnivore()) {
+			else if (carnivorism > 0.8 && worldMap->getCell(mapX, mapY + 1).creature != NULL){// && !worldMap->getCell(mapX, mapY + 1).creature->isCarnivore()) {
 				//kill the creature then move up
 				worldMap->addCarcass(mapX, mapY + 1, worldMap->getCell(mapX, mapY + 1).creature->kill());
 				//killing takes energy
@@ -215,7 +205,7 @@ bool Creature::update(){
 				expendedEnergy += movementCost;
 			}
 			//if the current creature is a carnivore and the target square has a creature in it
-			else if (carnivore && worldMap->getCell(mapX, mapY - 1).creature != NULL) {// && !worldMap->getCell(mapX, mapY - 1).creature->isCarnivore()) {
+			else if (carnivorism > 0.8 && worldMap->getCell(mapX, mapY - 1).creature != NULL) {// && !worldMap->getCell(mapX, mapY - 1).creature->isCarnivore()) {
 				worldMap->addCarcass(mapX, mapY - 1, worldMap->getCell(mapX, mapY - 1).creature->kill());
 				//killing takes energy
 				energy -= movementCost;
@@ -236,7 +226,7 @@ bool Creature::update(){
 				expendedEnergy += movementCost;
 			}
 			//if the current creature is a carnivore and the target square has a creature in it
-			else if (carnivore && worldMap->getCell(mapX - 1, mapY).creature != NULL) {// && !worldMap->getCell(mapX - 1, mapY).creature->isCarnivore()) {
+			else if (carnivorism > 0.8 && worldMap->getCell(mapX - 1, mapY).creature != NULL) {// && !worldMap->getCell(mapX - 1, mapY).creature->isCarnivore()) {
 				worldMap->addCarcass(mapX - 1, mapY, worldMap->getCell(mapX - 1, mapY).creature->kill());
 				//killing takes energy
 				energy -= movementCost;
@@ -257,7 +247,7 @@ bool Creature::update(){
 				expendedEnergy += movementCost;
 			}
 			//if the current creature is a carnivore and the target square has a creature in it
-			else if (carnivore && worldMap->getCell(mapX + 1, mapY).creature != NULL) {// && !worldMap->getCell(mapX + 1, mapY).creature->isCarnivore()) {
+			else if (carnivorism > 0.8 && worldMap->getCell(mapX + 1, mapY).creature != NULL) {// && !worldMap->getCell(mapX + 1, mapY).creature->isCarnivore()) {
 				worldMap->addCarcass(mapX + 1, mapY, worldMap->getCell(mapX + 1, mapY).creature->kill());
 				//killing takes energy
 				energy -= movementCost;
@@ -501,41 +491,6 @@ void Creature::nextTreeNode(bool lastDecision){
 
 }
 
-//check if the outcome of the current decision is an action or another node
-/*bool Creature::isOutcomeAction(bool decision){
-	if (decision){
-		if (currentTreeNode[1] % 100 == 0){
-			return false;
-		}
-		else {
-			return true;
-		}
-	}
-	else {
-		//the current node of the decision tree has 2 outcomes, true and false. each outcome leads to a sub tree of unknown length 
-		int decisions = 1;
-		int actions = 0;
-		int falseSubTreeStart = 1;
-		//the next element in the decision tree is the positive outcome of the current decision. first need to record where the end of that sub tree is
-		// in the decision tree array.
-		while (decisions > actions){
-			if (currentTreeNode[falseSubTreeStart] % 100 == 0){
-				decisions++;
-			}
-			else {
-				actions++;
-			}
-			falseSubTreeStart++;
-		}
-		if (currentTreeNode[falseSubTreeStart] % 100 == 0){
-			return false;
-		}
-		else {
-			return true;
-		}
-	}
-}*/
-
 void Creature::updateCreatureVariables(){
 	
 	//**************
@@ -575,12 +530,14 @@ void Creature::updateCreatureVariables(){
 
 void Creature::takeAction(){
 	actionTaken = true;
-	if (!carnivore && energy < maxEnergy) {
-		energy = energy + worldMap->eatPlant(mapX, mapY, mass / MAX_MAX_MASS);
-	}
-	//if carcass in cell eat it
-	else if (carnivore && worldMap->getCell(mapX, mapY).carcass != 0 && energy < maxEnergy) {
-		energy += worldMap->eatCarcass(mapX, mapY, mass / MAX_MAX_MASS);
+	//eat
+	if (energy < maxEnergy) {
+		//if the cell conatins a carcass eat a bit depending on creature size and how carnivorous
+		if (worldMap->getCell(mapX, mapY).carcass != 0)
+			energy += worldMap->eatCarcass(mapX, mapY, (mass / MAX_MAX_MASS) * carnivorism);
+		// otherwise eat the grass depeding on inverse of carnivorous
+		else
+			energy = energy + worldMap->eatPlant(mapX, mapY, (mass / MAX_MAX_MASS) * (1 - carnivorism));
 	}
 	//TODO - maybe move this to the end of the update and have happen every update not just when action takes?
 	lookedAround = false;
@@ -594,12 +551,8 @@ void Creature::addToNearby(int index, int* weights, int weightsIndex, MapCell ma
 	plantsNearby[index] = plantsNearby[index] + weights[weightsIndex] * mapCell.plantValue;
 	carcassNearby[index] = carcassNearby[index] + weights[weightsIndex] * mapCell.carcass;
 	if (mapCell.creature != NULL) {
-		if (mapCell.creature->isCarnivore()) {
-			carnivoreNearby[index] += weights[weightsIndex];
-		}
-		else {
-			herbivoreNearby[index] += weights[weightsIndex];
-		}
+		carnivoreNearby[index] = carnivoreNearby[index] + weights[weightsIndex] * mapCell.creature->getCarnivorism();
+		herbivoreNearby[index] += herbivoreNearby[index] + weights[weightsIndex] * (1 - mapCell.creature->getCarnivorism());
 	}
 	//friendlyNearby[0]++;
 }
@@ -661,7 +614,7 @@ void Creature::lookAround() {
 	int weightsIndex = 0;
 	int min, max;
 	int* weights = NULL;
-	if (carnivore) { //TODO fix
+	if (carnivorism > 0.8) { //TODO fix
 		min = -3;
 		max = 4;
 		weights = carnivoreWeights;
@@ -782,9 +735,9 @@ void Creature::randomTree(int length){
 		if (decisions - actions < decisionTreeLength - 2 - i && actions < decisions){
 			if (xor128() % 2 == 0){
 				//increase the liklihood of replication in random tree to make morelikely to catch on
-				if (RANDOM_NORMALISED_FLOAT < 0.1)
-					decisionTree[i] = 6;
-				else
+				//if (RANDOM_NORMALISED_FLOAT < 0.0)
+				//	decisionTree[i] = 6;
+				//else
 					decisionTree[i] = 1 + xor128() % NUM_OF_ACTIONS;
 				actions++;
 			}
@@ -828,25 +781,11 @@ void Creature::checkVariablesWithinBounds(){
 		growthRate = MAX_GROWTH_RATE;
 	}
 
-	if (numOffspringRange < 0){
-		numOffspringRange = 0;
+	if (carnivorism < 0) {
+		carnivorism = 0;
 	}
-	else if (numOffspringRange > MAX_NUM_OFFSPRING_RANGE){
-		numOffspringRange = MAX_NUM_OFFSPRING_RANGE;
-	}
-
-	if (numOffspringMedian < 0){
-		numOffspringMedian = 0;
-	}
-	else if (numOffspringMedian > MAX_NUM_OFFSPRING_MEDIAN){
-		numOffspringMedian = MAX_NUM_OFFSPRING_MEDIAN;
-	}
-
-	if (lengthOfPregnancy < 0){
-		lengthOfPregnancy = 0;
-	}
-	else if (lengthOfPregnancy > MAX_LENGTH_OF_PREGNANCY){
-		lengthOfPregnancy = MAX_LENGTH_OF_PREGNANCY;
+	else if (carnivorism > 1.0f) {
+		carnivorism = 1.0f;
 	}
 }
 
@@ -894,15 +833,9 @@ void Creature::setCreatureID() {
 		(growthRate / MAX_GROWTH_RATE)) * 255 / 3;
 	creatureID[2] = 0;
 	creatureID[1] = 0;*/
-	if (carnivore) {
-		creatureID[0] = 255;
-		creatureID[2] = 0;
-	}
-	else {
-		creatureID[0] = 0;// 127;
-		creatureID[2] = 255;
-	}
+	creatureID[0] = carnivorism * 255;// 127;
 	creatureID[1] = 0;
+	creatureID[2] = (1 - carnivorism) * 255;
 }
 
 void Creature::pregnancyCheck() {
@@ -942,7 +875,7 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 
 	//then have it mutate with a small chance
 	//very small chance to copy a node of decision tree and its sub tree and replace any random node and its sub tree with the copied one
-	
+
 	if (RANDOM_NORMALISED_FLOAT < MUTATION_RATE * MUTATION_RATE * MUTATION_RATE) {
 		//find the start and end of a random node to copy
 		int nodeToCopyStart = xor128() % decisionTreeLength;
@@ -966,7 +899,7 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 		//find the start and end of a random node to replace
 		int nodeToReplaceStart = xor128() % decisionTreeLength;
 		int nodeToReplaceEnd = nodeToReplaceStart;
-		
+
 		decisions = 1;
 		actions = 0;
 		do {
@@ -1050,31 +983,29 @@ void Creature::replicate() {
 
 	float babyMaxMass = maxMass + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * maxMass;
 	//TODO - doubled max energy constant (from 0.75) and changed the 3 values below. increased max plant energy from 1 to 1.5
-	float babyMass = mass * 0.30f;//0.35
+	float babyMass = mass * 0.30f;
 	float babyEnergy = energy * 0.30f;
-	mass = mass - babyMass;//0.8
-	energy = energy  - babyEnergy;//0.8
-	float babyEnergyThreshold = energyThreshold + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * energyThreshold;
-	float babyGrowthRate = growthRate + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * growthRate;
-	int babyNumOffspringRange = numOffspringRange + (xor128() % 3) - 1;
-	int babyNumOffspringMedian = numOffspringMedian + (xor128() % 3) - 1;
-	int babyLengthOfPregnancy = lengthOfPregnancy + (xor128() % 5) - 2;
-	bool babyCarnivore = carnivore;
+	mass = mass - babyMass;
+	energy = energy  - babyEnergy;
+	float babyEnergyThreshold = energyThreshold + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * maxMass * MAX_ENERGY_CONST; //max energy threshold
+	float babyGrowthRate = growthRate + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * MAX_GROWTH_RATE;
+	float babyCarnivore = carnivorism + ((RANDOM_NORMALISED_FLOAT - 0.5f) * 0.02f) * 1.0f; //max carnivorism
 	//if (RANDOM_NORMALISED_FLOAT < 0.1) {
 	//	babyCarnivore = true;
 	//}
 
 	baby[0] = creatureList->getPoolCreature();
-	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, babyCarnivore, babyMaxMass, babyMass, babyEnergy, babyEnergyThreshold, babyGrowthRate,
-		babyNumOffspringRange, babyNumOffspringMedian, babyLengthOfPregnancy, generation+1);
+	baby[0]->setCreatureAttributes(babyTree, babyTreeLength, babyCarnivore, babyMaxMass, babyMass, babyEnergy, babyEnergyThreshold, 
+		babyGrowthRate, generation+1);
 }
 
+//TODO COMPLETELY BROKEN
 bool Creature::isSameSpecies(float* statsToCheck) {
 	//check if the other creature falls within the bounds of what is considered to be the same species
 	//TODO possibly add more here?
 	float speciesVar = 0.03f;
 
-	if (statsToCheck[0] != carnivore) {
+	if (statsToCheck[0] != carnivorism) {
 		return false;
 	}
 	else if (statsToCheck[1] > maxMass * (1.0f + speciesVar) || statsToCheck[1] < maxMass * (1.0f - speciesVar)) {

@@ -112,7 +112,7 @@ void Creature::setCreatureAttributes(int* tree, int treeLength, float _carnivori
 }
 
 void Creature::setCreatureAttributes(Creature* creature) {
-
+ 
 	active = false;
 	actionTaken = false;
 	lookedAround = false;
@@ -883,75 +883,78 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 
 	//then have it mutate with a small chance
 	//very small chance to copy a node of decision tree and its sub tree and replace any random node and its sub tree with the copied one
+	float randomNumber = 0.0f;
+	int* tempTree = decisionTree;
+	int tempTreeLength = decisionTreeLength;
+	while (randomNumber < mutationRate) {
+		randomNumber = RANDOM_NORMALISED_FLOAT;
+		if (randomNumber < mutationRate3) {
+			//find the start and end of a random node to copy
+			int nodeToCopyStart = xor128() % tempTreeLength;
+			int nodeToCopyEnd = nodeToCopyStart;
 
-	if (RANDOM_NORMALISED_FLOAT < mutationRate3) {
-		//find the start and end of a random node to copy
-		int nodeToCopyStart = xor128() % decisionTreeLength;
-		int nodeToCopyEnd = nodeToCopyStart;
+			int decisions = 1;
+			int actions = 0;
+			do {
+				if (nodeToCopyEnd >= tempTreeLength) {
+					cout << "Error - tree node search exceeded bounds of tree" << endl;
+				}
+				else if (tempTree[nodeToCopyEnd] % 100 == 0) {
+					decisions++;
+				}
+				else {
+					actions++;
+				}
+				nodeToCopyEnd++;
+			} while (decisions > actions);
 
-		int decisions = 1;
-		int actions = 0;
-		do {
-			if (nodeToCopyEnd >= decisionTreeLength) {
-				cout << "Error - tree node search exceeded bounds of tree" << endl;
+			//find the start and end of a random node to replace
+			int nodeToReplaceStart = xor128() % tempTreeLength;
+			int nodeToReplaceEnd = nodeToReplaceStart;
+
+			decisions = 1;
+			actions = 0;
+			do {
+				if (nodeToReplaceEnd >= tempTreeLength) {
+					cout << "Error - tree node search exceeded bounds of tree" << endl;
+				}
+				else if (tempTree[nodeToReplaceEnd] % 100 == 0) {
+					decisions++;
+				}
+				else {
+					actions++;
+				}
+				nodeToReplaceEnd++;
+			} while (decisions > actions);
+
+			//the length of the new decision tree is the length of the original minus the replaced node plus the copied node
+			babyTreeLength = tempTreeLength - (nodeToReplaceEnd - nodeToReplaceStart) + (nodeToCopyEnd - nodeToCopyStart);
+
+			babyDecisionTree = new int[babyTreeLength];
+
+			//copy the decision tree to the baby tree up to the point you wish to replace
+			for (int i = 0; i < nodeToReplaceStart; i++) {
+				babyDecisionTree[i] = tempTree[i];
 			}
-			else if (decisionTree[nodeToCopyEnd] % 100 == 0) {
-				decisions++;
+			//then copy the node to be copied into the space for the one to be replaced (don't have to be the same length)
+			for (int i = 0; i < nodeToCopyEnd - nodeToCopyStart; i++) {
+				babyDecisionTree[nodeToReplaceStart + i] = tempTree[nodeToCopyStart + i];
 			}
-			else {
-				actions++;
+			//copy the rest of the decision tree to the baby tree from the end of the replaced node onwards
+			for (int i = 0; i < babyTreeLength - (nodeToReplaceStart + nodeToCopyEnd - nodeToCopyStart); i++) {
+				babyDecisionTree[nodeToReplaceStart + nodeToCopyEnd - nodeToCopyStart + i] = tempTree[nodeToReplaceEnd + i];
 			}
-			nodeToCopyEnd++;
-		} while (decisions > actions);
-
-		//find the start and end of a random node to replace
-		int nodeToReplaceStart = xor128() % decisionTreeLength;
-		int nodeToReplaceEnd = nodeToReplaceStart;
-
-		decisions = 1;
-		actions = 0;
-		do {
-			if (nodeToReplaceEnd >= decisionTreeLength) {
-				cout << "Error - tree node search exceeded bounds of tree" << endl;
-			}
-			else if (decisionTree[nodeToReplaceEnd] % 100 == 0) {
-				decisions++;
-			}
-			else {
-				actions++;
-			}
-			nodeToReplaceEnd++;
-		} while (decisions > actions);
-
-		//the length of the new decision tree is the length of the original minus the replaced node plus the copied node
-		babyTreeLength = decisionTreeLength - (nodeToReplaceEnd - nodeToReplaceStart) + (nodeToCopyEnd - nodeToCopyStart);
-
-		babyDecisionTree = new int[babyTreeLength];
-
-		//copy the decision tree to the baby tree up to the point you wish to replace
-		for (int i = 0; i < nodeToReplaceStart; i++) {
-			babyDecisionTree[i] = decisionTree[i];
 		}
-		//then copy the node to be copied into the space for the one to be replaced (don't have to be the same length)
-		for (int i = 0; i < nodeToCopyEnd - nodeToCopyStart; i++) {
-			babyDecisionTree[nodeToReplaceStart + i] = decisionTree[nodeToCopyStart + i];
-		}
-		//copy the rest of the decision tree to the baby tree from the end of the replaced node onwards
-		for (int i = 0; i < babyTreeLength - (nodeToReplaceStart + nodeToCopyEnd - nodeToCopyStart); i++) {
-			babyDecisionTree[nodeToReplaceStart + nodeToCopyEnd - nodeToCopyStart + i] = decisionTree[nodeToReplaceEnd + i];
-		}
-	}
-	//chance of some random action or decision being randomised to some other action or decision (doesn't change action to decision or vice versa)
-	else if (RANDOM_NORMALISED_FLOAT < mutationRate) {
-		babyTreeLength = decisionTreeLength;
-		babyDecisionTree = new int[babyTreeLength];
+		//chance of some random action or decision being randomised to some other action or decision (doesn't change action to decision or vice versa)
+		else if (randomNumber < mutationRate) {
+			babyTreeLength = tempTreeLength;
+			babyDecisionTree = new int[babyTreeLength];
 
-		//copy decision tree array
-		for (int i = 0; i < decisionTreeLength; i++) {
-			babyDecisionTree[i] = decisionTree[i];
-		}
+			//copy decision tree array
+			for (int i = 0; i < tempTreeLength; i++) {
+				babyDecisionTree[i] = tempTree[i];
+			}
 
-		if (mateDecisionTree == NULL) {
 			int randomNode = xor128() % babyTreeLength;
 			//check if the node to change is an decision, if so set to random decision, otherwise set to random action
 			if (0 == babyDecisionTree[randomNode] % 100) {
@@ -961,16 +964,21 @@ void Creature::generateOffspringDecisionTree(int* &babyDecisionTree, int &babyTr
 				babyDecisionTree[randomNode] = 1 + xor128() % NUM_OF_ACTIONS;
 			}
 		}
-	}
-	//if no mutation just copy the tree
-	else {
-		babyTreeLength = decisionTreeLength;
-		babyDecisionTree = new int[babyTreeLength];
+		//if no mutation just copy the tree
+		else {
+			babyTreeLength = tempTreeLength;
+			babyDecisionTree = new int[babyTreeLength];
 
-		//copy decision tree array
-		for (int i = 0; i < decisionTreeLength; i++) {
-			babyDecisionTree[i] = decisionTree[i];
+			//copy decision tree array
+			for (int i = 0; i < tempTreeLength; i++) {
+				babyDecisionTree[i] = tempTree[i];
+			}
 		}
+		//swap baby tree to temp tree
+		if (tempTree != decisionTree)
+			delete[] tempTree;
+		tempTree = babyDecisionTree;
+		tempTreeLength = babyTreeLength;
 	}
 }
 

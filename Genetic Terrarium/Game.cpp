@@ -446,7 +446,7 @@ void Game::GameInit(){
 
 	worldMap = new WorldMap(width, height, 1.0f);
 	if (!creatureList)
-		creatureList = new CreatureList(150);
+		creatureList = new CreatureList(15000);
 	//pass the maps to the creature class as static pointers so creatures can interact with them
 	Creature::worldMap = worldMap;
 	Creature::creatureList = creatureList;

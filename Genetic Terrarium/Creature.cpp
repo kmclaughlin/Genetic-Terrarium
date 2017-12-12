@@ -18,7 +18,7 @@ split decision trees out int its own object
 //id's of actions (terminators) and decisions (nodes) for update switch and filling decision tree arrays
 //actions id's are < 100 and decision ids are *100 so they are identifiable in array list
 //as decisions and actions are sequential only actually need to know how many there are, can get random decision by (1 + xor128() % NUM_OF_DECISIONS) * 100
-const  int Creature::NUM_OF_DECISIONS = 39;
+const  int Creature::NUM_OF_DECISIONS = 31; //change to 39
 const  int Creature::NUM_OF_ACTIONS = 6;
 
 WorldMap* Creature::worldMap = NULL;
@@ -37,7 +37,7 @@ Creature::Creature(float carnivorism) :carnivorism(carnivorism) {
 	growthRate = RANDOM_NORMALISED_FLOAT * MAX_GROWTH_RATE;
 	mapX = NULL;
 	mapY = NULL;
-	mutationRate = 0.2f + RANDOM_NORMALISED_FLOAT * 0.4f;
+	mutationRate = 0.2f + RANDOM_NORMALISED_FLOAT * 0.6f;
 
 	setCreatureID();
 	//creatures start with a fixed percentage of their max energy
@@ -315,16 +315,16 @@ bool Creature::update() {
 			nextTreeNode(compare('r', 1, 'p'));
 			break;
 		case 500:
-			nextTreeNode(compare('u', 2, 'p'));
+			nextTreeNode(compare('u', 4, 'p'));
 			break;
 		case 600:
-			nextTreeNode(compare('d', 2, 'p'));
+			nextTreeNode(compare('d', 4, 'p'));
 			break;
 		case 700:
-			nextTreeNode(compare('l', 2, 'p'));
+			nextTreeNode(compare('l', 4, 'p'));
 			break;
 		case 800:
-			nextTreeNode(compare('r', 2, 'p'));
+			nextTreeNode(compare('r', 4, 'p'));
 			break;
 		case 900:
 			nextTreeNode(compare('u', 1, 'h'));
@@ -339,16 +339,16 @@ bool Creature::update() {
 			nextTreeNode(compare('r', 1, 'h'));
 			break;
 		case 1300:
-			nextTreeNode(compare('u', 2, 'h'));
+			nextTreeNode(compare('u', 4, 'h'));
 			break;
 		case 1400:
-			nextTreeNode(compare('d', 2, 'h'));
+			nextTreeNode(compare('d', 4, 'h'));
 			break;
 		case 1500:
-			nextTreeNode(compare('l', 2, 'h'));
+			nextTreeNode(compare('l', 4, 'h'));
 			break;
 		case 1600:
-			nextTreeNode(compare('r', 2, 'h'));
+			nextTreeNode(compare('r', 4, 'h'));
 			break;
 		case 1700:
 			nextTreeNode(energy > energyThreshold);
@@ -377,28 +377,28 @@ bool Creature::update() {
 			break;
 		case 2400:
 			//compare carnivores
-			nextTreeNode(compare('u', 1, 'c'));
+			nextTreeNode(compare('u', 1, 'b'));
 			break;
 		case 2500:
-			nextTreeNode(compare('d', 1, 'c'));
+			nextTreeNode(compare('d', 1, 'b'));
 			break;
 		case 2600:
-			nextTreeNode(compare('l', 1, 'c'));
+			nextTreeNode(compare('l', 1, 'b'));
 			break;
 		case 2700:
-			nextTreeNode(compare('r', 1, 'c'));
+			nextTreeNode(compare('r', 1, 'b'));
 			break;
 		case 2800:
-			nextTreeNode(compare('u', 2, 'c'));
+			nextTreeNode(compare('u', 4, 'b'));
 			break;
 		case 2900:
-			nextTreeNode(compare('d', 2, 'c'));
+			nextTreeNode(compare('d', 4, 'b'));
 			break;
 		case 3000:
-			nextTreeNode(compare('l', 2, 'c'));
+			nextTreeNode(compare('l', 4, 'b'));
 			break;
 		case 3100:
-			nextTreeNode(compare('r', 2, 'c'));
+			nextTreeNode(compare('r', 4, 'b'));
 			break;
 		case 3200:
 			//compare carcasses
@@ -447,9 +447,6 @@ bool Creature::update() {
 	// if dead return false
 	if (energy < 0.005 * maxEnergy) {
 		worldMap->addCarcass(mapX, mapY, kill());
-	}
-	if (RANDOM_NORMALISED_FLOAT < age * CHANCE_OF_DEATH) {
-		alive = false;
 	}
 	//check at the start of the next update if the craeture is dead or not
 	return alive;
@@ -552,7 +549,7 @@ void Creature::addToNearby(int index, int* weights, int weightsIndex, MapCell ma
 	carcassNearby[index] = carcassNearby[index] + weights[weightsIndex] * mapCell.carcass;
 	if (mapCell.creature != NULL) {
 		carnivoreNearby[index] = carnivoreNearby[index] + weights[weightsIndex] * mapCell.creature->getCarnivorism();
-		herbivoreNearby[index] += herbivoreNearby[index] + weights[weightsIndex] * (1 - mapCell.creature->getCarnivorism());
+		herbivoreNearby[index] = herbivoreNearby[index] + weights[weightsIndex] * (1 - mapCell.creature->getCarnivorism());
 	}
 	//friendlyNearby[0]++;
 }
